@@ -1,0 +1,58 @@
+[project]
+name = "agent-api"
+version = "0.1.0"
+description = "This is a template for creating powerful Agent APIs."
+readme = "README.md"
+classifiers = [
+    # TODO
+]
+license = {text = "MIT"}
+dependencies = [
+  "typer",
+  "fastapi[standard]",
+  "loguru",
+  "pydantic",
+  "pydantic-settings",
+  "ipykernel",
+  "llama-index>=0.14.3",
+  "llama-index-vector-stores-chroma>=0.5.3",
+  "llama-index-core>=0.14.3",
+  "openai>=1.109.1",
+  "chromadb>=1.1.0",
+  "pandas>=2.2.3",
+  "python-dotenv>=1.1.1",
+  "matplotlib>=3.10.6",
+]
+requires-python = ">= 3.10"
+
+[dependency-groups]
+dev = [
+    "coverage",
+    "pre-commit",
+    "pytest",
+    "ruff",
+]
+
+[project.scripts]
+acc_llamaindex = "acc_llamaindex.cli:app"
+
+[tool.ty]
+# All rules are enabled as "error" by default; no need to specify unless overriding.
+# Example override: relax a rule for the entire project (uncomment if needed).
+# rules.TY015 = "warn"  # For invalid-argument-type, warn instead of error.
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+]
+
+[tool.uv]
+package = true
