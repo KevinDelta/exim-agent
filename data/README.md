@@ -4,7 +4,7 @@ This directory contains all data-related files for the RAG application.
 
 ## Structure
 
-```
+```bash
 data/
 ├── documents/          # Place your documents here for ingestion
 │   ├── *.pdf          # PDF files
@@ -14,7 +14,8 @@ data/
 │   ├── *.csv          # CSV files
 │   ├── *.json         # JSON files
 │   ├── *.html         # HTML files
-│   └── *.xml          # XML files
+│   ├── *.xml          # XML files
+│   └── *.epub         # EPUB files
 │
 └── chroma_db/         # ChromaDB vector store (auto-generated)
     └── ...            # Vector embeddings and metadata
@@ -25,7 +26,7 @@ data/
 ### Adding Documents
 
 1. Place your documents in the `documents/` directory
-2. Supported formats: `.txt`, `.pdf`, `.docx`, `.md`, `.csv`, `.json`, `.html`, `.xml`
+2. Supported formats: `.txt`, `.pdf`, `.docx`, `.md`, `.csv`, `.json`, `.html`, `.xml`, `.epub`
 3. You can organize files in subdirectories - the ingestion process is recursive
 
 ### Ingesting Documents

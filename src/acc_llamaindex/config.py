@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     # Supported file extensions for ingestion
     supported_file_extensions: list[str] = [
         ".txt", ".pdf", ".docx", ".md", 
-        ".csv", ".json", ".html", ".xml"
+        ".csv", ".json", ".html", ".xml", ".epub"
     ]
 
 

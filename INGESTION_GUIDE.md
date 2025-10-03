@@ -3,6 +3,7 @@
 ## Overview
 
 The RAG application now has a complete document ingestion pipeline that:
+
 - Parses documents using LlamaIndex
 - Creates embeddings using OpenAI's text-embedding-3-small
 - Stores vectors in ChromaDB with persistent storage
@@ -10,7 +11,7 @@ The RAG application now has a complete document ingestion pipeline that:
 
 ## Architecture
 
-```
+```python
 ┌─────────────────┐
 │   Documents     │
 │  (data/docs/)   │
@@ -71,22 +72,27 @@ echo "RAG combines retrieval with generation." > data/documents/test2.txt
 
 ### 4. Ingest documents
 
-**Option A: Ingest from default directory**
+ Option A: Ingest from default directory
+
 ```bash
 curl -X POST http://localhost:8000/ingest-documents \
   -H "Content-Type: application/json" \
   -d '{}'
 ```
 
-**Option B: Ingest from specific directory**
+ Option B: Ingest from specific directory
+
 ```bash
+
 curl -X POST http://localhost:8000/ingest-documents \
   -H "Content-Type: application/json" \
   -d '{"directory_path": "./data/documents"}'
 ```
 
-**Option C: Ingest single file**
+ Option C: Ingest single file
+
 ```bash
+
 curl -X POST http://localhost:8000/ingest-documents \
   -H "Content-Type: application/json" \
   -d '{"file_path": "./data/documents/test1.txt"}'
@@ -136,7 +142,7 @@ All settings are in `src/acc_llamaindex/config.py`:
 
 ## Directory Structure
 
-```
+```bash
 data/
 ├── documents/          # Place your documents here
 │   ├── file1.pdf
@@ -179,18 +185,22 @@ After ingestion is working, you'll want to implement:
 
 ## Troubleshooting
 
-**Issue: "ChromaDB not initialized"**
+Issue: "ChromaDB not initialized"
+
 - Ensure the API startup completed successfully
 - Check logs for initialization errors
 
-**Issue: "Directory not found"**
+Issue: "Directory not found"
+
 - Verify the path exists: `mkdir -p data/documents`
 - Use absolute paths if relative paths fail
 
-**Issue: "No documents found"**
+Issue: "No documents found"
+
 - Check file extensions match supported formats
 - Ensure files are in the specified directory
 
-**Issue: OpenAI API errors**
+Issue: OpenAI API errors
+
 - Verify your `OPENAI_API_KEY` is valid
 - Check you have API credits available
