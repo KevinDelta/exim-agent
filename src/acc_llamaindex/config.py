@@ -1,3 +1,6 @@
+import os
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,9 +22,9 @@ class Settings(BaseSettings):
     chunk_size: int = 1024
     chunk_overlap: int = 200
     
-    # Paths
-    documents_path: str = "./data/documents"
-    chroma_db_path: str = "./data/chroma_db"
+    # Paths - use environment variable or default to /app/data (Docker) or ./data (local)
+    documents_path: str = os.getenv("DOCUMENTS_PATH", "/app/data/documents")
+    chroma_db_path: str = os.getenv("CHROMA_DB_PATH", "/app/data/chroma_db")
     
     # ChromaDB Configuration
     chroma_collection_name: str = "documents"

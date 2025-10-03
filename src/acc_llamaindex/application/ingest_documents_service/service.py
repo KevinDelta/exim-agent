@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
@@ -13,8 +14,10 @@ class IngestDocumentsService:
     """Service for ingesting documents into the vector store."""
 
     def __init__(self):
+        # Use absolute paths from settings (already resolved in config)
         self.documents_path = Path(settings.documents_path)
         self.supported_extensions = settings.supported_file_extensions
+        logger.info(f"IngestDocumentsService initialized with documents_path: {self.documents_path}")
 
     def ingest_documents_from_directory(self, directory_path: str | None = None) -> IngestionResult:
         """
@@ -28,7 +31,13 @@ class IngestDocumentsService:
         """
         try:
             # Use provided path or default
-            ingest_path = Path(directory_path) if directory_path else self.documents_path
+            if directory_path:
+                # If relative path provided, resolve it from current working directory
+                ingest_path = Path(directory_path)
+                if not ingest_path.is_absolute():
+                    ingest_path = ingest_path.resolve()
+            else:
+                ingest_path = self.documents_path
             
             if not ingest_path.exists():
                 raise DocumentIngestionError(f"Directory not found: {ingest_path}")
@@ -108,7 +117,7 @@ class IngestDocumentsService:
             IngestionResult with processing statistics
         """
         try:
-            path = Path(file_path)
+            path = Path(file_path).resolve()
             
             if not path.exists():
                 raise DocumentIngestionError(f"File not found: {file_path}")
