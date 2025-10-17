@@ -2,16 +2,18 @@
 
 ## Overview
 
-The RAG application now has a complete document ingestion pipeline that:
+The RAG application has a complete document ingestion pipeline powered by **LangChain v1** that:
 
-- Parses documents using LlamaIndex
+- Parses documents using LangChain document loaders
+- Splits text into chunks using RecursiveCharacterTextSplitter
 - Creates embeddings using OpenAI's text-embedding-3-small
 - Stores vectors in ChromaDB with persistent storage
 - Supports multiple file formats
+- Provides RAG-based chat capabilities with retrieval
 
 ## Architecture
 
-```python
+```Bash
 ┌─────────────────┐
 │   Documents     │
 │  (data/docs/)   │
@@ -20,13 +22,19 @@ The RAG application now has a complete document ingestion pipeline that:
          ▼
 ┌─────────────────┐
 │  Ingestion API  │
-│  /ingest-docs   │
+│ /ingest-docs    │
 └────────┬────────┘
          │
          ▼
 ┌─────────────────┐
-│ LlamaIndex      │
-│ SimpleReader    │
+│  LangChain      │
+│ Doc Loaders     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Text Splitter   │
+│ Chunk Documents │
 └────────┬────────┘
          │
          ▼
@@ -39,6 +47,12 @@ The RAG application now has a complete document ingestion pipeline that:
 ┌─────────────────┐
 │   ChromaDB      │
 │ (data/chroma/)  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Chat Service   │
+│ LangChain Agent │
 └─────────────────┘
 ```
 
@@ -155,33 +169,58 @@ data/
 
 ## Implementation Details
 
-### Files Created
+### Files Created/Updated (LangChain v1)
 
 1. **Infrastructure Layer**
-   - `infrastructure/db/chroma_client.py` - ChromaDB client wrapper
-   - `infrastructure/llm_providers/openai_provider.py` - LLM initialization
+   - `infrastructure/db/chroma_client.py` - ChromaDB client with LangChain Chroma vector store
+   - `infrastructure/llm_providers/langchain_provider.py` - ChatOpenAI and OpenAIEmbeddings initialization
 
 2. **Application Layer**
-   - `application/ingest_documents_service/service.py` - Ingestion logic
+   - `application/ingest_documents_service/service.py` - Document ingestion with LangChain loaders and text splitters
+   - `application/chat_service/service.py` - **NEW** RAG chat service using LangChain v1 agents
 
 3. **Domain Layer**
    - `domain/models.py` - Document and IngestionResult models
    - `domain/exceptions.py` - Custom exceptions
 
 4. **API Layer**
-   - Updated `infrastructure/api/main.py` - Added startup lifespan and endpoint
-   - Updated `infrastructure/api/models.py` - Request/response models
+   - Updated `infrastructure/api/main.py` - Added chat endpoint and agent initialization
+   - Updated `infrastructure/api/models.py` - ChatRequest/ChatResponse and other models
 
 5. **Configuration**
-   - Updated `config.py` - All settings and paths
+   - Updated `config.py` - LangChain settings, RAG configuration, and paths
 
-## Next Steps
+## Chat Service (NEW)
 
-After ingestion is working, you'll want to implement:
+The application now includes a fully functional RAG chat service:
 
-1. **Chat Service** - Query the vector store with RAG
-2. **Reset Memory Service** - Clear the vector store
-3. **Evaluation Service** - Measure RAG performance
+### Features
+
+- **LangChain v1 Agents**: Uses `create_agent()` with retriever tool
+- **Context Retrieval**: Automatically retrieves relevant documents from vector store
+- **Conversation History**: Supports multi-turn conversations
+- **Streaming Support**: Can stream responses in real-time (future enhancement)
+
+### Usage
+
+```bash
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "What are two core ideas i need to know about AI?",
+    "conversation_history": []
+  }'
+```
+
+### Response Format
+
+```json
+{
+  "response": "Based on the documents in the knowledge base...",
+  "success": true,
+  "error": null
+}
+```
 
 ## Troubleshooting
 

@@ -1,10 +1,10 @@
 import chromadb
 from chromadb.config import Settings as ChromaSettings
-from llama_index.core import StorageContext, VectorStoreIndex
-from llama_index.vector_stores.chroma import ChromaVectorStore
+from langchain_chroma import Chroma
 from loguru import logger
 
-from acc_llamaindex.config import settings
+from acc_llamaindex.config import config
+from acc_llamaindex.infrastructure.llm_providers.langchain_provider import get_embeddings
 
 
 class ChromaDBClient:
@@ -12,53 +12,42 @@ class ChromaDBClient:
 
     def __init__(self):
         self._client = None
-        self._collection = None
         self._vector_store = None
-        self._storage_context = None
 
     def initialize(self):
         """Initialize ChromaDB client with persistent storage."""
         try:
-            logger.info(f"Initializing ChromaDB at {settings.chroma_db_path}")
+            logger.info(f"Initializing ChromaDB at {config.chroma_db_path}")
             
-            self._client = chromadb.PersistentClient(
-                path=settings.chroma_db_path,
-                settings=ChromaSettings(
-                    anonymized_telemetry=False,
-                    allow_reset=True,
-                )
+            # Initialize embeddings
+            embeddings = get_embeddings()
+            
+            # Create LangChain Chroma vector store
+            self._vector_store = Chroma(
+                collection_name=config.chroma_collection_name,
+                embedding_function=embeddings,
+                persist_directory=config.chroma_db_path,
+                collection_metadata={"description": "Document embeddings for RAG"}
             )
             
-            # Get or create collection
-            self._collection = self._client.get_or_create_collection(
-                name=settings.chroma_collection_name,
-                metadata={"description": "Document embeddings for RAG"}
-            )
+            # Get underlying ChromaDB client and collection for direct operations
+            self._client = self._vector_store._client
+            self._collection = self._vector_store._collection
             
-            # Create vector store for LlamaIndex
-            self._vector_store = ChromaVectorStore(chroma_collection=self._collection)
-            self._storage_context = StorageContext.from_defaults(vector_store=self._vector_store)
-            
-            logger.info(f"ChromaDB initialized successfully with collection: {settings.chroma_collection_name}")
+            logger.info(f"ChromaDB initialized successfully with collection: {config.chroma_collection_name}")
             
         except Exception as e:
             logger.error(f"Failed to initialize ChromaDB: {e}")
             raise
 
-    def get_storage_context(self) -> StorageContext:
-        """Get the storage context for LlamaIndex."""
-        if self._storage_context is None:
-            raise RuntimeError("ChromaDB not initialized. Call initialize() first.")
-        return self._storage_context
-
-    def get_vector_store(self) -> ChromaVectorStore:
-        """Get the vector store instance."""
+    def get_vector_store(self) -> Chroma:
+        """Get the LangChain Chroma vector store instance."""
         if self._vector_store is None:
             raise RuntimeError("ChromaDB not initialized. Call initialize() first.")
         return self._vector_store
 
     def get_collection(self):
-        """Get the ChromaDB collection."""
+        """Get the underlying ChromaDB collection."""
         if self._collection is None:
             raise RuntimeError("ChromaDB not initialized. Call initialize() first.")
         return self._collection
@@ -66,14 +55,24 @@ class ChromaDBClient:
     def reset_collection(self):
         """Reset the collection by deleting and recreating it."""
         try:
-            logger.warning(f"Resetting collection: {settings.chroma_collection_name}")
-            self._client.delete_collection(name=settings.chroma_collection_name)
-            self._collection = self._client.create_collection(
-                name=settings.chroma_collection_name,
-                metadata={"description": "Document embeddings for RAG"}
+            logger.warning(f"Resetting collection: {config.chroma_collection_name}")
+            
+            # Delete the old collection
+            self._client.delete_collection(name=config.chroma_collection_name)
+            
+            # Reinitialize the vector store with a fresh collection
+            embeddings = get_embeddings()
+            self._vector_store = Chroma(
+                collection_name=config.chroma_collection_name,
+                embedding_function=embeddings,
+                persist_directory=config.chroma_db_path,
+                collection_metadata={"description": "Document embeddings for RAG"}
             )
-            self._vector_store = ChromaVectorStore(chroma_collection=self._collection)
-            self._storage_context = StorageContext.from_defaults(vector_store=self._vector_store)
+            
+            # Update references
+            self._client = self._vector_store._client
+            self._collection = self._vector_store._collection
+            
             logger.info("Collection reset successfully")
         except Exception as e:
             logger.error(f"Failed to reset collection: {e}")
@@ -84,7 +83,7 @@ class ChromaDBClient:
         try:
             count = self._collection.count()
             return {
-                "collection_name": settings.chroma_collection_name,
+                "collection_name": config.chroma_collection_name,
                 "document_count": count,
                 "status": "active"
             }

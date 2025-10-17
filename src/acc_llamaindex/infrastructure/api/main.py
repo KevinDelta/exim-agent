@@ -3,13 +3,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from loguru import logger
 
+from acc_llamaindex.application.chat_service.service import chat_service
 from acc_llamaindex.application.ingest_documents_service.service import ingest_service
 from acc_llamaindex.domain.exceptions import DocumentIngestionError
 from acc_llamaindex.infrastructure.db.chroma_client import chroma_client
-from acc_llamaindex.infrastructure.llm_providers.openai_provider import initialize_llm_providers
+from acc_llamaindex.infrastructure.llm_providers.langchain_provider import get_embeddings, get_llm
 
 from .models import (
     ChatRequest,
+    ChatResponse,
     EvalRequest,
     IngestDocumentsRequest,
     IngestDocumentsResponse,
@@ -23,8 +25,13 @@ async def lifespan(app: FastAPI):
     # Startup: Initialize LLM providers and ChromaDB
     logger.info("Starting up Agent API...")
     try:
-        initialize_llm_providers()
+        # Initialize LangChain providers
+        get_llm()
+        get_embeddings()
+        # Initialize ChromaDB
         chroma_client.initialize()
+        # Initialize chat service
+        chat_service.initialize()
         logger.info("Agent API startup complete")
     except Exception as e:
         logger.error(f"Failed to start Agent API: {e}")
@@ -52,12 +59,33 @@ async def root():
     return {"message": "Welcome to Agent API. Visit /docs for documentation"}
 
 
-@app.post("/chat")
-async def chat(request: ChatRequest):
+@app.post("/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest) -> ChatResponse:
     """
-    Uses the Chat Service from application layer
+    Chat endpoint with RAG capabilities.
+    
+    - Accepts a message and optional conversation history
+    - Uses vector store to retrieve relevant context
+    - Returns AI-generated response based on retrieved knowledge
     """
-    return {"message": "Chat request received"}
+    try:
+        logger.info(f"Received chat request: {request.message[:50]}...")
+        
+        # Process chat request
+        result = chat_service.chat(
+            message=request.message,
+            conversation_history=request.conversation_history
+        )
+        
+        return ChatResponse(
+            response=result["response"],
+            success=result.get("success", True),
+            error=result.get("error")
+        )
+        
+    except Exception as e:
+        logger.error(f"Chat request failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/eval")
@@ -99,9 +127,22 @@ async def ingest_documents(request: IngestDocumentsRequest) -> IngestDocumentsRe
 @app.post("/reset-memory")
 async def reset_memory(request: ResetMemoryRequest):
     """
-    Uses the Chat Service from application layer
+    Reset the vector store collection, deleting all stored documents.
     """
-    return {"message": "Reset memory request received"}
+    try:
+        logger.warning("Resetting vector store collection...")
+        chroma_client.reset_collection()
+        stats = chroma_client.get_collection_stats()
+        
+        return {
+            "success": True,
+            "message": "Vector store collection reset successfully",
+            "collection_stats": stats
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to reset collection: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to reset collection: {str(e)}")
 
 
 if __name__ == "__main__":

@@ -9,20 +9,47 @@ class Settings(BaseSettings):
     
     # API Keys
     openai_api_key: str
-    huggingface_api_key: str | None = None
+    anthropic_api_key: str | None = None
     groq_api_key: str | None = None
+    huggingface_api_key: str | None = None
     llama_cloud_api_key: str | None = None
     
-    # LLM Configuration
+    # LangSmith Configuration
+    langsmith_workspace_id: str | None = None
+    langsmith_api_key: str | None = None  
+    langsmith_endpoint: str | None = None  
+    langsmith_project: str | None = None  
+      
+    # Provider Selection
+    llm_provider: str = "openai"  # Options: openai, anthropic, groq
+    embedding_provider: str = "openai"  # Currently only openai supported
+    
+    # OpenAI Configuration
     openai_model: str = "gpt-5-nano-2025-08-07"
     openai_embedding_model: str = "text-embedding-3-small"
+    
+    # Anthropic Configuration
+    anthropic_model: str = "claude-haiku-4-5-20251001"
+    
+    # Groq Configuration
+    groq_model: str = "llama-3.3-70b-versatile"
+    
+    # Common LLM Settings (apply to all providers)
     llm_temperature: float = 0.7
+    max_tokens: int | None = None
+    streaming: bool = True
     
     # Document Processing
     chunk_size: int = 1024
     chunk_overlap: int = 200
     
-    # Paths - use environment variable or default to /app/data (Docker) or ./data (local)
+    # RAG Configuration
+    retrieval_k: int = 5  # Number of documents to retrieve
+    retrieval_score_threshold: float = 0.7  # Minimum similarity score
+    
+    # Paths - explicit configuration via environment variables
+    # Docker default: /app/data/* (matches volume mount in docker-compose.yaml)
+    # Local: set absolute paths in .env file
     documents_path: str = os.getenv("DOCUMENTS_PATH", "/app/data/documents")
     chroma_db_path: str = os.getenv("CHROMA_DB_PATH", "/app/data/chroma_db")
     
@@ -36,4 +63,4 @@ class Settings(BaseSettings):
     ]
 
 
-settings = Settings()
+config = Settings()
