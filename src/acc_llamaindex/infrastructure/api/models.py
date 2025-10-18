@@ -22,12 +22,21 @@ class ChatResponse(BaseModel):
 
 class EvalRequest(BaseModel):
     """Request model for evaluation."""
-    pass
+    query: str = Field(..., description="The user's question")
+    response: str = Field(..., description="The generated answer")
+    contexts: list[str] = Field(..., description="Retrieved context documents")
+    ground_truth: Optional[str] = Field(None, description="Optional ground truth answer")
+    metrics: Optional[list[str]] = Field(
+        None,
+        description="List of metrics to compute (default: all). Options: faithfulness, answer_relevance, context_precision"
+    )
 
 
 class EvalResponse(BaseModel):
     """Response model for evaluation."""
-    pass
+    success: bool
+    evaluation: dict
+    error: Optional[str] = None
 
 
 class IngestDocumentsRequest(BaseModel):

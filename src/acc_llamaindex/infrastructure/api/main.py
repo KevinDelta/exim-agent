@@ -5,6 +5,7 @@ from loguru import logger
 
 from acc_llamaindex.application.chat_service.service import chat_service
 from acc_llamaindex.application.ingest_documents_service.service import ingest_service
+from acc_llamaindex.application.evaluation_service import evaluation_service
 from acc_llamaindex.domain.exceptions import DocumentIngestionError
 from acc_llamaindex.infrastructure.db.chroma_client import chroma_client
 from acc_llamaindex.infrastructure.llm_providers.langchain_provider import get_embeddings, get_llm
@@ -88,12 +89,57 @@ async def chat(request: ChatRequest) -> ChatResponse:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/eval")
-async def eval(request: EvalRequest):
+@app.post("/evaluate")
+async def evaluate(request: EvalRequest):
     """
-    Uses the Chat Service from application layer
+    Evaluate a RAG response for quality metrics.
+    
+    - Accepts query, response, and contexts
+    - Returns faithfulness, relevance, and context precision scores
+    - Optional: specify which metrics to compute
     """
-    return {"message": "Eval request received"}
+    try:
+        logger.info(f"Received evaluation request for query: {request.query[:50]}...")
+        
+        # Initialize evaluation service if not already done
+        if not evaluation_service.is_enabled():
+            evaluation_service.initialize()
+        
+        # Evaluate the response
+        results = await evaluation_service.evaluate_response(
+            query=request.query,
+            response=request.response,
+            contexts=request.contexts,
+            ground_truth=request.ground_truth,
+            metrics=request.metrics
+        )
+        
+        return {
+            "success": True,
+            "evaluation": results
+        }
+        
+    except Exception as e:
+        logger.error(f"Evaluation request failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/evaluation/metrics")
+async def list_evaluation_metrics():
+    """
+    List available evaluation metrics.
+    
+    Returns descriptions of all available metrics.
+    """
+    return {
+        "success": True,
+        "metrics": evaluation_service.get_available_metrics() if evaluation_service.is_enabled() else [],
+        "descriptions": {
+            "faithfulness": "Measures if answer is grounded in retrieved context (0-1)",
+            "answer_relevance": "Measures if answer addresses the question (0-1)",
+            "context_precision": "Measures if retrieved documents are relevant (0-1)"
+        }
+    }
 
 
 @app.post("/ingest-documents", response_model=IngestDocumentsResponse)

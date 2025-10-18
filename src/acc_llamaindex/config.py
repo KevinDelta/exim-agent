@@ -44,8 +44,17 @@ class Settings(BaseSettings):
     chunk_overlap: int = 200
     
     # RAG Configuration
-    retrieval_k: int = 3  # Number of documents to retrieve
+    retrieval_k: int = 20  # Number of documents to retrieve (increased for reranking)
     retrieval_score_threshold: float = 0.7  # Minimum similarity score
+    
+    # Reranking Configuration
+    enable_reranking: bool = True
+    rerank_top_k: int = 5  # Number of documents after reranking
+    cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    
+    # Evaluation Configuration
+    enable_evaluation: bool = False  # Auto-evaluate responses
+    evaluation_threshold: float = 0.7  # Minimum acceptable score
     
     # Paths - explicit configuration via environment variables
     # Docker default: /app/data/* (matches volume mount in docker-compose.yaml)

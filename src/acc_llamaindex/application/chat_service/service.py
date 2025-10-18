@@ -6,6 +6,8 @@ from loguru import logger
 from acc_llamaindex.config import config
 from acc_llamaindex.infrastructure.db.chroma_client import chroma_client
 from acc_llamaindex.infrastructure.llm_providers.langchain_provider import get_llm
+from acc_llamaindex.application.reranking_service import reranking_service
+from acc_llamaindex.application.evaluation_service import evaluation_service
 
 
 class ChatService:
@@ -26,12 +28,23 @@ class ChatService:
             self.llm = get_llm()
             self.vector_store = chroma_client.get_vector_store()
             
-            # Create retriever tool
+            # Initialize reranking service
+            if config.enable_reranking:
+                logger.info("Initializing reranking service...")
+                reranking_service.initialize()
+            
+            # Initialize evaluation service
+            if config.enable_evaluation:
+                logger.info("Initializing evaluation service...")
+                evaluation_service.initialize()
+            
+            # Create retriever tool with reranking support
             @tool
             def retrieve_context(query: str) -> str:
                 """Retrieve relevant documents from the knowledge base to answer questions."""
                 try:
                     # Perform similarity search
+                    # retrieval_k is already set to 20 in config for reranking
                     docs = self.vector_store.similarity_search(
                         query, 
                         k=config.retrieval_k
@@ -39,6 +52,11 @@ class ChatService:
                     
                     if not docs:
                         return "No relevant documents found in the knowledge base."
+                    
+                    # Rerank if enabled
+                    if reranking_service.is_enabled():
+                        logger.info(f"Reranking {len(docs)} documents to top {config.rerank_top_k}")
+                        docs = reranking_service.rerank(query, docs, top_k=config.rerank_top_k)
                     
                     # Format retrieved documents
                     context = "\n\n---\n\n".join([
