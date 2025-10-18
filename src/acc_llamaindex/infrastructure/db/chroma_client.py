@@ -27,7 +27,8 @@ class ChromaDBClient:
                 collection_name=config.chroma_collection_name,
                 embedding_function=embeddings,
                 persist_directory=config.chroma_db_path,
-                collection_metadata={"description": "Document embeddings for RAG"}
+                collection_metadata={"description": "Document embeddings for RAG"},
+                collection_configuration={"hnsw": {"space": "cosine"}}
             )
             
             # Get underlying ChromaDB client and collection for direct operations
@@ -66,7 +67,8 @@ class ChromaDBClient:
                 collection_name=config.chroma_collection_name,
                 embedding_function=embeddings,
                 persist_directory=config.chroma_db_path,
-                collection_metadata={"description": "Document embeddings for RAG"}
+                collection_metadata={"description": "Document embeddings for RAG"},
+                collection_configuration={"hnsw": {"space": "cosine"}}
             )
             
             # Update references

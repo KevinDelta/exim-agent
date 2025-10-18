@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-haiku-4-5-20251001"
     
     # Groq Configuration
-    groq_model: str = "llama-3.3-70b-versatile"
+    groq_model: str = "openai/gpt-oss-120b"
     
     # Common LLM Settings (apply to all providers)
     llm_temperature: float = 0.7
@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     chunk_overlap: int = 200
     
     # RAG Configuration
-    retrieval_k: int = 5  # Number of documents to retrieve
+    retrieval_k: int = 3  # Number of documents to retrieve
     retrieval_score_threshold: float = 0.7  # Minimum similarity score
     
     # Paths - explicit configuration via environment variables

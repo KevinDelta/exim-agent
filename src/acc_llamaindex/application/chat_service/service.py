@@ -21,7 +21,7 @@ class ChatService:
         """Initialize the chat service with LLM and retriever."""
         try:
             logger.info("Initializing ChatService...")
-            
+             
             # Get LLM and vector store
             self.llm = get_llm()
             self.vector_store = chroma_client.get_vector_store()
@@ -73,7 +73,7 @@ class ChatService:
     def chat(self, message: str, conversation_history: list | None = None) -> dict:
         """
         Process a chat message and return a response.
-        
+
         Args:
             message: The user's message
             conversation_history: Optional list of previous messages in the conversation

@@ -49,31 +49,29 @@ class GroqProvider(BaseLLMProvider):
     def get_available_models() -> list[str]:
         """Get list of available Groq models."""
         return [
-            "llama-3.3-70b-versatile",
-            "llama-3.1-70b-versatile",
-            "llama-3.1-8b-instant",
-            "mixtral-8x7b-32768",
-            "gemma2-9b-it",
+            "openai/gpt-oss-120b",
+            "qwen/qwen3-32b",
+            "moonshotai/kimi-k2-instruct-0905",
         ]
     
     @staticmethod
     def get_model_info(model: str) -> dict:
         """Get information about a specific model."""
         model_info = {
-            "llama-3.3-70b-versatile": {
+            "openai/gpt-oss-120b": {
                 "context_window": 128000,
                 "tokens_per_second": 800,
-                "description": "Fastest Llama 3.3 70B, best for general use",
+                "description": "OpenAI GPT-120B, best for general use",
             },
-            "llama-3.1-8b-instant": {
+            "qwen/qwen3-32b": {
                 "context_window": 128000,
                 "tokens_per_second": 2000,
-                "description": "Ultra-fast, best for simple tasks",
+                "description": "Qwen Qwen3-32B, best for simple tasks",
             },
-            "mixtral-8x7b-32768": {
+            "moonshotai/kimi-k2-instruct-0905": {
                 "context_window": 32768,
                 "tokens_per_second": 600,
-                "description": "Mixture of experts, good performance",
+                "description": "Moonshot AI Kimi K2 Instruct, good performance",
             },
         }
         return model_info.get(model, {})
