@@ -242,11 +242,16 @@ Provide a helpful answer based on the context. If you cite information, referenc
         source_type = match.group(1)
         index = int(match.group(2)) - 1
         if index < len(state["reranked_context"]):
-            citations.append(state["reranked_context"][index])
+            # Copy the original result to avoid mutating shared state
+            citation = state["reranked_context"][index].copy()
+            # Extract a stable identifier for salience tracking
+            citation_id = citation.get("metadata", {}).get("id") or citation.get("metadata", {}).get("doc_id")
+            if citation_id:
+                citation["doc_id"] = citation_id
+            citations.append(citation)
     
     state["citations"] = citations
     
-    # Track salience for cited items
     if citations:
         salience_tracker.track_citations(citations)
     
@@ -304,6 +309,8 @@ def update_working_memory(state: MemoryState) -> MemoryState:
             logger.info(
                 f"Distillation complete: {distill_result.get('facts_created', 0)} facts created"
             )
+    else:
+        logger.debug("No distillation needed at this time")
     
     return state
 

@@ -19,6 +19,15 @@ from acc_llamaindex.infrastructure.db.chroma_client import chroma_client
 from acc_llamaindex.infrastructure.llm_providers.langchain_provider import get_embeddings, get_llm
 from acc_llamaindex.config import config
 
+# ZenML pipelines (optional)
+try:
+    from acc_llamaindex.application.zenml_pipelines.runner import pipeline_runner
+    ZENML_PIPELINES_AVAILABLE = True
+except ImportError:
+    logger.warning("ZenML pipelines not available - /pipelines/* endpoints will be disabled")
+    ZENML_PIPELINES_AVAILABLE = False
+    pipeline_runner = None
+
 from .models import (
     ChatRequest,
     ChatResponse,
@@ -479,6 +488,7 @@ async def health_check():
         return {
             "status": "healthy",
             "memory_system_enabled": config.enable_memory_system,
+            "zenml_pipelines_enabled": ZENML_PIPELINES_AVAILABLE,
             "semantic_memory": sm_stats,
             "sessions": session_stats,
             "background_jobs": jobs_status
@@ -490,6 +500,145 @@ async def health_check():
             "status": "unhealthy",
             "error": str(e)
         }
+
+
+# ZenML Pipeline Endpoints (optional MLOps integration)
+
+@app.post("/pipelines/ingest")
+async def run_ingestion_pipeline_endpoint(request: IngestDocumentsRequest):
+    """
+    Run document ingestion via ZenML pipeline.
+    
+    Provides MLOps benefits:
+    - Artifact caching (skip re-embedding unchanged docs)
+    - Experiment tracking (compare chunking strategies)
+    - Full lineage tracking (doc → chunks → embeddings → storage)
+    - Versioning of pipeline runs
+    """
+    if not ZENML_PIPELINES_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="ZenML pipelines not available. Use /ingest-documents instead."
+        )
+    
+    try:
+        logger.info(f"Running ZenML ingestion pipeline: {request}")
+        
+        result = pipeline_runner.run_ingestion(
+            directory_path=request.directory_path or request.file_path
+        )
+        
+        return {
+            "success": result.get("status") == "success",
+            "result": result,
+            "pipeline_type": "zenml"
+        }
+        
+    except Exception as e:
+        logger.error(f"ZenML ingestion pipeline failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/pipelines/distill")
+async def run_distillation_pipeline_endpoint(request: MemoryDistillRequest):
+    """
+    Run conversation distillation via ZenML pipeline.
+    
+    Provides MLOps benefits:
+    - Track which LLM generated which facts
+    - Compare different summarization prompts
+    - Measure fact extraction quality
+    - Full lineage tracking (turns → summary → facts → storage)
+    """
+    if not ZENML_PIPELINES_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="ZenML pipelines not available. Use /memory/distill instead."
+        )
+    
+    if not config.enable_memory_system:
+        raise HTTPException(status_code=503, detail="Memory system is disabled")
+    
+    try:
+        logger.info(f"Running ZenML distillation pipeline for session: {request.session_id}")
+        
+        n_turns = config.wm_max_turns if request.force else config.em_distill_every_n_turns
+        
+        result = pipeline_runner.run_distillation(
+            session_id=request.session_id,
+            n_turns=n_turns
+        )
+        
+        return {
+            "success": result.get("status") == "success",
+            "facts_created": result.get("facts_stored", 0),
+            "result": result,
+            "pipeline_type": "zenml"
+        }
+        
+    except Exception as e:
+        logger.error(f"ZenML distillation pipeline failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/pipelines/promote")
+async def run_promotion_pipeline_endpoint(request: MemoryPromoteRequest):
+    """
+    Run memory promotion via ZenML pipeline.
+    
+    Provides MLOps benefits:
+    - Experiment with different promotion thresholds
+    - Track promotion rates over time
+    - A/B test criteria changes
+    - Full lineage tracking (EM scan → filter → promote → SM)
+    """
+    if not ZENML_PIPELINES_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="ZenML pipelines not available. Use /memory/promote instead."
+        )
+    
+    if not config.enable_memory_system or not config.enable_sm_promotion:
+        raise HTTPException(status_code=503, detail="Memory promotion is disabled")
+    
+    try:
+        logger.info("Running ZenML promotion pipeline")
+        
+        result = pipeline_runner.run_promotion()
+        
+        return {
+            "success": result.get("status") == "success",
+            "promoted": result.get("promoted", 0),
+            "found": result.get("found_candidates", 0),
+            "result": result,
+            "pipeline_type": "zenml"
+        }
+        
+    except Exception as e:
+        logger.error(f"ZenML promotion pipeline failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/pipelines/status")
+async def get_pipelines_status():
+    """
+    Get status of ZenML pipelines integration.
+    
+    Returns whether ZenML is available and configured.
+    """
+    return {
+        "zenml_available": ZENML_PIPELINES_AVAILABLE,
+        "pipelines": {
+            "ingestion": ZENML_PIPELINES_AVAILABLE,
+            "distillation": ZENML_PIPELINES_AVAILABLE,
+            "promotion": ZENML_PIPELINES_AVAILABLE
+        },
+        "endpoints": {
+            "ingest": "/pipelines/ingest",
+            "distill": "/pipelines/distill",
+            "promote": "/pipelines/promote"
+        } if ZENML_PIPELINES_AVAILABLE else {}
+    }
 
 
 if __name__ == "__main__":

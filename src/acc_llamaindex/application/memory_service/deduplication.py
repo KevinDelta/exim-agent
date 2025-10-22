@@ -185,11 +185,12 @@ class FactDeduplicator:
                     # Calculate cosine similarity (already done by ChromaDB)
                     # We approximate it from the distance
                     similar_facts.append({
-                        "id": doc.metadata.get("id"),
-                        "text": doc.page_content,
-                        "metadata": doc.metadata,
-                        "similarity": 0.95  # Placeholder - ChromaDB returns by similarity already
-                    })
+    "id": doc.metadata.get("id"),
+    "text": doc.page_content,
+    "metadata": doc.metadata,
+    # Use the actual similarity score returned by ChromaDB (e.g., distance converted to similarity)
+    "similarity": doc.metadata.get("distance", 1.0)
+})
             
             return similar_facts[:k]
             

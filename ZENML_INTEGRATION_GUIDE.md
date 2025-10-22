@@ -29,6 +29,7 @@
 ### Current State
 
 Your memory-aware RAG system is a sophisticated multi-tier architecture with:
+
 - **3-tier memory system**: Working Memory (WM) → Episodic Memory (EM) → Semantic Memory (SM)
 - **LangGraph orchestration**: State machine for chat flow
 - **4 background jobs**: Promotion, salience decay, TTL cleanup, session cleanup
@@ -528,6 +529,7 @@ def promotion_pipeline(
 ```
 
 **Benefits**:
+
 - ✅ Experiment with different promotion thresholds
 - ✅ Track promotion rates over time
 - ✅ A/B test criteria changes
@@ -577,6 +579,7 @@ def evaluation_pipeline(
 ```
 
 **Benefits**:
+
 - ✅ Track quality metrics over time
 - ✅ Compare model versions
 - ✅ Catch regressions before production
@@ -589,6 +592,7 @@ def evaluation_pipeline(
 ### Artifact Types
 
 **1. Data Artifacts**:
+
 - `RawDocuments`: Original files (PDF, TXT, etc.)
 - `DocumentChunks`: Split text with metadata
 - `EmbeddingVectors`: Cached embeddings
@@ -597,12 +601,14 @@ def evaluation_pipeline(
 - `EvalDatasets`: Test Q&A pairs
 
 **2. Model Artifacts**:
+
 - `EmbeddingModel`: text-embedding-3-small, etc.
-- `LLMModel`: GPT-4, Claude, etc.
+- `LLMModel`: GPT-5, Claude, etc.
 - `RerankerModel`: Cross-encoder weights
 - `IntentClassifier`: Fine-tuned classifier (if custom)
 
 **3. Metrics Artifacts**:
+
 - `IngestionStats`: Docs processed, chunks created
 - `DistillationMetrics`: Facts extracted, dedup rate
 - `PromotionMetrics`: Promotion rate, criteria stats
@@ -622,6 +628,7 @@ RawDocument_v1 (PDF)
 ```
 
 **Queries Enabled**:
+
 - "Which documents contributed to this fact?"
 - "When did we change embedding models?"
 - "What chunking strategy produced the best metrics?"
@@ -629,11 +636,13 @@ RawDocument_v1 (PDF)
 ### Caching Strategy
 
 **Cache These Steps** (expensive):
+
 - ✅ `generate_embeddings`: $0.0001/token adds up
 - ✅ `load_and_split_documents`: I/O intensive
 - ✅ `scan_episodic_memory`: Large DB scans
 
 **Don't Cache** (must be fresh):
+
 - ❌ `fetch_recent_turns`: Conversation state
 - ❌ `summarize_conversation`: LLM creativity
 - ❌ `run_rag_queries`: User queries
@@ -645,6 +654,7 @@ RawDocument_v1 (PDF)
 ### Tracked Experiments
 
 **1. Chunking Strategy Experiments**:
+
 ```python
 # Experiment: Optimal chunk size
 for chunk_size in [512, 1024, 2048]:
@@ -657,6 +667,7 @@ for chunk_size in [512, 1024, 2048]:
 ```
 
 **2. Embedding Model Comparison**:
+
 ```python
 # Experiment: Which embeddings work best?
 models = [
@@ -671,6 +682,7 @@ for model in models:
 ```
 
 **3. Promotion Threshold Tuning**:
+
 ```python
 # Experiment: Optimal promotion criteria
 for salience in [0.6, 0.7, 0.8, 0.9]:
@@ -707,6 +719,7 @@ def my_pipeline(...):
 ### Model Versioning Strategy
 
 **Embedding Models**:
+
 ```python
 from zenml.integrations.mlflow import MLFlowModelDeployer
 
@@ -725,11 +738,12 @@ model_registry.register_model(
 ```
 
 **LLM Models**:
+
 ```python
 # Track LLM changes
 model_registry.register_model(
     name="chat-llm",
-    version="gpt-4-turbo-2024",
+    version="gpt-5-mini",
     model_type="openai",
     metadata={
         "context_window": 128000,
@@ -745,6 +759,7 @@ model_registry.register_model(
 ```
 
 **Reranker Models**:
+
 ```python
 # Version cross-encoder models
 model_registry.register_model(
@@ -761,7 +776,7 @@ model_registry.register_model(
 
 ### Model Lifecycle
 
-```
+```python
 Development → Staging → Production → Archived
      ↓           ↓          ↓            ↓
   Experiment   A/B Test   Serving    Deprecated
@@ -773,7 +788,8 @@ Development → Staging → Production → Archived
 
 ### Deployment Scenarios
 
-**Scenario 1: Pipeline as Batch Job**
+**Scenario 1: Pipeline as Batch Job**:
+
 ```python
 # Run ingestion daily
 from zenml.pipelines import Schedule
@@ -783,7 +799,8 @@ ingestion_pipeline.run(
 )
 ```
 
-**Scenario 2: Pipeline as API Endpoint**
+**Scenario 2: Pipeline as API Endpoint**:
+
 ```python
 # FastAPI integration
 @app.post("/ingest")
@@ -794,7 +811,8 @@ async def trigger_ingestion(directory: str):
     return {"run_id": run.id, "status": "started"}
 ```
 
-**Scenario 3: Event-Driven Pipelines**
+**Scenario 3: Event-Driven Pipelines**:
+
 ```python
 # Trigger on S3 upload
 from zenml.integrations.aws import s3_event_source
@@ -808,6 +826,7 @@ def auto_ingest_pipeline(s3_path: str):
 ### Production Stack
 
 **Recommended Setup**:
+
 1. **Orchestrator**: Kubernetes (scalable)
 2. **Artifact Store**: S3 (durable, versioned)
 3. **Metadata Store**: PostgreSQL (relational)
@@ -824,6 +843,7 @@ def auto_ingest_pipeline(s3_path: str):
 **Goals**: Set up ZenML, migrate ingestion pipeline
 
 **Tasks**:
+
 1. Install ZenML: `pip install zenml[server]`
 2. Initialize ZenML: `zenml init`
 3. Create local stack
@@ -832,6 +852,7 @@ def auto_ingest_pipeline(s3_path: str):
 6. Validate artifact caching works
 
 **Success Criteria**:
+
 - ✅ Ingestion pipeline running in ZenML
 - ✅ Artifacts stored and cached
 - ✅ MLflow tracking working
@@ -843,6 +864,7 @@ def auto_ingest_pipeline(s3_path: str):
 **Goals**: Migrate distillation and promotion
 
 **Tasks**:
+
 1. Convert distillation to ZenML pipeline
 2. Convert promotion to ZenML pipeline
 3. Set up scheduled runs (cron)
@@ -850,6 +872,7 @@ def auto_ingest_pipeline(s3_path: str):
 5. Add experiment tracking for prompts
 
 **Success Criteria**:
+
 - ✅ Distillation pipeline automated
 - ✅ Promotion pipeline scheduled (daily)
 - ✅ Lineage tracked end-to-end
@@ -861,6 +884,7 @@ def auto_ingest_pipeline(s3_path: str):
 **Goals**: Add evaluation, optimize caching
 
 **Tasks**:
+
 1. Create evaluation pipeline
 2. Build RAGAS metrics integration
 3. Set up A/B testing framework
@@ -868,6 +892,7 @@ def auto_ingest_pipeline(s3_path: str):
 5. Add model registry versioning
 
 **Success Criteria**:
+
 - ✅ Automated quality evaluation
 - ✅ Experiment comparison dashboard
 - ✅ Model versions tracked
@@ -879,7 +904,8 @@ def auto_ingest_pipeline(s3_path: str):
 **Goals**: Deploy to production stack
 
 **Tasks**:
-1. Set up Kubernetes orchestrator
+
+1. Set up airflow orchestrator
 2. Configure S3 artifact store
 3. Deploy PostgreSQL metadata store
 4. Set up remote MLflow
@@ -887,6 +913,7 @@ def auto_ingest_pipeline(s3_path: str):
 6. Add monitoring dashboards
 
 **Success Criteria**:
+
 - ✅ Production stack deployed
 - ✅ Pipelines running in Kubernetes
 - ✅ Alerts configured
@@ -899,6 +926,7 @@ def auto_ingest_pipeline(s3_path: str):
 ### 1. **Step Granularity**
 
 **Good** (atomic steps):
+
 ```python
 @step
 def load_documents(paths: List[str]) -> List[str]:
@@ -910,6 +938,7 @@ def split_documents(docs: List[str]) -> List[str]:
 ```
 
 **Bad** (monolithic step):
+
 ```python
 @step
 def load_split_embed_store_all():
@@ -921,6 +950,7 @@ def load_split_embed_store_all():
 ### 2. **Artifact Naming**
 
 **Good** (descriptive):
+
 ```python
 @step(output_materializers=TextMaterializer)
 def extract_facts(...) -> Annotated[List[dict], "episodic_facts"]:
@@ -928,6 +958,7 @@ def extract_facts(...) -> Annotated[List[dict], "episodic_facts"]:
 ```
 
 **Bad** (generic):
+
 ```python
 @step
 def extract_facts(...) -> List[dict]:
@@ -982,20 +1013,23 @@ def call_external_api(...):
 ## 📅 Implementation Roadmap
 
 ### Month 1: Foundation
+
 - ✅ Week 1: Setup + ingestion pipeline
 - ✅ Week 2: Testing + validation
 - ✅ Week 3: Distillation pipeline
 - ✅ Week 4: Promotion pipeline
 
 ### Month 2: Enhancement
+
 - ✅ Week 5: Evaluation pipeline
 - ✅ Week 6: Experiment tracking
 - ✅ Week 7: Model registry
 - ✅ Week 8: Optimization
 
 ### Month 3: Production
+
 - ✅ Week 9: Production stack setup
-- ✅ Week 10: Kubernetes deployment
+- ✅ Week 10: Airflow deployment
 - ✅ Week 11: Monitoring + alerts
 - ✅ Week 12: Documentation + training
 
@@ -1004,11 +1038,13 @@ def call_external_api(...):
 ## 🎓 Learning Resources
 
 ### Official Documentation
+
 - [ZenML Docs](https://docs.zenml.io/)
 - [ZenML Examples](https://github.com/zenml-io/zenml/tree/main/examples)
 - [ZenML Discord](https://zenml.io/slack)
 
 ### Relevant Examples
+
 - [RAG Pipeline Example](https://github.com/zenml-io/zenml-projects/tree/main/llm-complete-guide)
 - [LLM Finetuning](https://github.com/zenml-io/zenml-projects/tree/main/llm-finetuning)
 - [Experiment Tracking](https://docs.zenml.io/user-guide/starter-guide/track-ml-models)
@@ -1050,4 +1086,3 @@ Track these KPIs to measure ZenML impact:
 **Document Status**: Ready for Review  
 **Recommended Next Action**: Proof of concept with ingestion pipeline  
 **Estimated Implementation Time**: 8-12 weeks (phased approach)
-
