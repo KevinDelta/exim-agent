@@ -63,3 +63,65 @@ class IngestDocumentsResponse(BaseModel):
 
 class ResetMemoryRequest(BaseModel):
     pass
+
+
+# Memory API Models
+
+class MemoryRecallRequest(BaseModel):
+    """Request model for memory recall."""
+    query: str = Field(..., description="User query text")
+    session_id: str = Field(..., description="Session identifier")
+    intent: Optional[str] = Field(None, description="Optional intent (auto-detected if not provided)")
+    k: Optional[int] = Field(10, description="Number of results to retrieve")
+
+
+class MemoryRecallResponse(BaseModel):
+    """Response model for memory recall."""
+    success: bool
+    results: list[dict]
+    query_metadata: dict
+    error: Optional[str] = None
+
+
+class MemoryDistillRequest(BaseModel):
+    """Request model for conversation distillation."""
+    session_id: str = Field(..., description="Session identifier")
+    force: bool = Field(False, description="Force distillation even if not at threshold")
+
+
+class MemoryDistillResponse(BaseModel):
+    """Response model for distillation."""
+    success: bool
+    facts_created: int
+    duplicates_merged: int
+    error: Optional[str] = None
+
+
+class SessionInfoResponse(BaseModel):
+    """Response model for session info."""
+    success: bool
+    session_id: str
+    wm_turns: int
+    em_facts: int
+    last_distilled: Optional[str]
+    error: Optional[str] = None
+
+
+class MemoryPromoteRequest(BaseModel):
+    """Request model for manual promotion."""
+    fact_id: Optional[str] = Field(None, description="Specific fact ID to promote (optional)")
+
+
+class MemoryPromoteResponse(BaseModel):
+    """Response model for promotion."""
+    success: bool
+    promoted: int
+    found: int
+    error: Optional[str] = None
+
+
+class MetricsResponse(BaseModel):
+    """Response model for metrics."""
+    success: bool
+    metrics: dict
+    error: Optional[str] = None

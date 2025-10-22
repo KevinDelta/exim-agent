@@ -4,11 +4,20 @@ from fastapi import FastAPI, HTTPException
 from loguru import logger
 
 from acc_llamaindex.application.chat_service.service import chat_service
+from acc_llamaindex.application.chat_service.session_manager import session_manager
 from acc_llamaindex.application.ingest_documents_service.service import ingest_service
 from acc_llamaindex.application.evaluation_service import evaluation_service
+from acc_llamaindex.application.memory_service import (
+    memory_service,
+    conversation_summarizer,
+    memory_promoter,
+    background_jobs,
+)
+from acc_llamaindex.application.memory_service.metrics import memory_metrics
 from acc_llamaindex.domain.exceptions import DocumentIngestionError
 from acc_llamaindex.infrastructure.db.chroma_client import chroma_client
 from acc_llamaindex.infrastructure.llm_providers.langchain_provider import get_embeddings, get_llm
+from acc_llamaindex.config import config
 
 from .models import (
     ChatRequest,
@@ -17,6 +26,14 @@ from .models import (
     IngestDocumentsRequest,
     IngestDocumentsResponse,
     ResetMemoryRequest,
+    MemoryRecallRequest,
+    MemoryRecallResponse,
+    MemoryDistillRequest,
+    MemoryDistillResponse,
+    SessionInfoResponse,
+    MemoryPromoteRequest,
+    MemoryPromoteResponse,
+    MetricsResponse,
 )
 
 
@@ -33,6 +50,12 @@ async def lifespan(app: FastAPI):
         chroma_client.initialize()
         # Initialize chat service
         chat_service.initialize()
+        
+        # Start background jobs if memory system enabled
+        if config.enable_memory_system:
+            background_jobs.start()
+            logger.info("Memory background jobs started")
+        
         logger.info("Agent API startup complete")
     except Exception as e:
         logger.error(f"Failed to start Agent API: {e}")
@@ -42,6 +65,11 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("Shutting down Agent API...")
+    
+    # Stop background jobs
+    if config.enable_memory_system:
+        background_jobs.stop()
+        logger.info("Memory background jobs stopped")
 
 
 app = FastAPI(
@@ -189,6 +217,279 @@ async def reset_memory(request: ResetMemoryRequest):
     except Exception as e:
         logger.error(f"Failed to reset collection: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to reset collection: {str(e)}")
+
+
+# Memory API Endpoints
+
+@app.post("/memory/recall", response_model=MemoryRecallResponse)
+async def memory_recall(request: MemoryRecallRequest) -> MemoryRecallResponse:
+    """
+    Recall relevant memories from all tiers (WM, EM, SM).
+    
+    - Queries episodic memory (session-specific facts)
+    - Queries semantic memory (long-term knowledge)
+    - Filters by intent and entities
+    - Returns ranked results with provenance
+    """
+    try:
+        if not config.enable_memory_system:
+            raise HTTPException(status_code=503, detail="Memory system is disabled")
+        
+        logger.info(f"Memory recall request: session={request.session_id}, query={request.query[:50]}")
+        
+        # Recall memories
+        result = memory_service.recall(
+            query=request.query,
+            session_id=request.session_id,
+            intent=request.intent or "general",
+            entities=[],
+            k_em=request.k // 2 if request.k else config.em_k_default,
+            k_sm=request.k // 2 if request.k else config.sm_k_default
+        )
+        
+        return MemoryRecallResponse(
+            success=True,
+            results=result["combined_results"],
+            query_metadata=result["metadata"]
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Memory recall failed: {e}")
+        return MemoryRecallResponse(
+            success=False,
+            results=[],
+            query_metadata={},
+            error=str(e)
+        )
+
+
+@app.post("/memory/distill", response_model=MemoryDistillResponse)
+async def memory_distill(request: MemoryDistillRequest) -> MemoryDistillResponse:
+    """
+    Manually trigger conversation distillation.
+    
+    - Summarizes recent conversation turns
+    - Extracts atomic facts
+    - Writes to episodic memory
+    """
+    try:
+        if not config.enable_memory_system:
+            raise HTTPException(status_code=503, detail="Memory system is disabled")
+        
+        logger.info(f"Manual distillation request for session: {request.session_id}")
+        
+        # Get recent turns
+        turns = session_manager.get_recent_turns(
+            request.session_id,
+            n=config.em_distill_every_n_turns if not request.force else config.wm_max_turns
+        )
+        
+        if not turns:
+            return MemoryDistillResponse(
+                success=True,
+                facts_created=0,
+                duplicates_merged=0,
+                error="No turns to distill"
+            )
+        
+        # Distill
+        result = conversation_summarizer.distill(
+            session_id=request.session_id,
+            turns=turns
+        )
+        
+        return MemoryDistillResponse(
+            success=True,
+            facts_created=result.get("facts_created", 0),
+            duplicates_merged=0,  # TODO: Track from deduplication
+            error=result.get("error")
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Distillation failed: {e}")
+        return MemoryDistillResponse(
+            success=False,
+            facts_created=0,
+            duplicates_merged=0,
+            error=str(e)
+        )
+
+
+@app.get("/memory/session/{session_id}", response_model=SessionInfoResponse)
+async def get_session_info(session_id: str) -> SessionInfoResponse:
+    """
+    Get information about a session.
+    
+    - Working memory turns count
+    - Episodic memory facts count
+    - Last distillation time
+    """
+    try:
+        if not config.enable_memory_system:
+            raise HTTPException(status_code=503, detail="Memory system is disabled")
+        
+        # Get session
+        session = session_manager.get_session(session_id)
+        
+        if not session:
+            return SessionInfoResponse(
+                success=True,
+                session_id=session_id,
+                wm_turns=0,
+                em_facts=0,
+                last_distilled=None,
+                error="Session not found"
+            )
+        
+        # Count EM facts for this session
+        try:
+            em_results = chroma_client.query_episodic(session_id, "facts", k=1000)
+            em_count = len(em_results)
+        except:
+            em_count = 0
+        
+        return SessionInfoResponse(
+            success=True,
+            session_id=session_id,
+            wm_turns=session["turn_count"],
+            em_facts=em_count,
+            last_distilled=session.get("last_distilled")
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get session info: {e}")
+        return SessionInfoResponse(
+            success=False,
+            session_id=session_id,
+            wm_turns=0,
+            em_facts=0,
+            last_distilled=None,
+            error=str(e)
+        )
+
+
+@app.post("/memory/promote", response_model=MemoryPromoteResponse)
+async def memory_promote(request: MemoryPromoteRequest) -> MemoryPromoteResponse:
+    """
+    Manually trigger memory promotion (EM → SM).
+    
+    - Finds high-value episodic facts
+    - Promotes them to semantic memory
+    - Returns promotion statistics
+    """
+    try:
+        if not config.enable_memory_system or not config.enable_sm_promotion:
+            raise HTTPException(status_code=503, detail="Memory promotion is disabled")
+        
+        logger.info("Manual promotion triggered")
+        
+        # Run promotion cycle
+        result = memory_promoter.run_promotion_cycle()
+        
+        return MemoryPromoteResponse(
+            success=result.get("status") == "success",
+            promoted=result.get("promoted", 0),
+            found=result.get("found", 0),
+            error=result.get("error")
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Promotion failed: {e}")
+        return MemoryPromoteResponse(
+            success=False,
+            promoted=0,
+            found=0,
+            error=str(e)
+        )
+
+
+@app.delete("/memory/session/{session_id}")
+async def delete_session(session_id: str):
+    """
+    Delete a session and its working memory.
+    
+    - Removes session from WM
+    - Does not affect EM facts (they expire via TTL)
+    """
+    try:
+        deleted = session_manager.delete_session(session_id)
+        
+        return {
+            "success": True,
+            "deleted": deleted,
+            "message": f"Session {session_id} deleted" if deleted else "Session not found"
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to delete session: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/metrics", response_model=MetricsResponse)
+async def get_metrics() -> MetricsResponse:
+    """
+    Get memory system metrics.
+    
+    - Retrieval metrics (latency, cache hit rate, over-fetch)
+    - Memory metrics (item counts, promotion rate, deduplication)
+    - Quality metrics (citation rate, precision)
+    """
+    try:
+        metrics = memory_metrics.get_all_metrics()
+        
+        return MetricsResponse(
+            success=True,
+            metrics=metrics
+        )
+        
+    except Exception as e:
+        logger.error(f"Failed to get metrics: {e}")
+        return MetricsResponse(
+            success=False,
+            metrics={},
+            error=str(e)
+        )
+
+
+@app.get("/health")
+async def health_check():
+    """
+    Health check endpoint.
+    
+    Returns system status and configuration.
+    """
+    try:
+        # Get collection stats
+        sm_stats = chroma_client.get_collection_stats()
+        
+        # Get session stats
+        session_stats = session_manager.get_stats()
+        
+        # Get background jobs status
+        jobs_status = background_jobs.get_status() if config.enable_memory_system else {"running": False}
+        
+        return {
+            "status": "healthy",
+            "memory_system_enabled": config.enable_memory_system,
+            "semantic_memory": sm_stats,
+            "sessions": session_stats,
+            "background_jobs": jobs_status
+        }
+        
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return {
+            "status": "unhealthy",
+            "error": str(e)
+        }
 
 
 if __name__ == "__main__":

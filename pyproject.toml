@@ -1,5 +1,5 @@
 [project]
-name = "agent-api"
+name = "acc-llamaindex"
 version = "0.1.0"
 description = "This is a template for creating powerful Agent APIs."
 readme = "README.md"
@@ -34,6 +34,7 @@ dependencies = [
   "langchain-anthropic>=0.3.21",
   "langchain-groq>=1.0.0a1",
   "sentence-transformers>=2.2.0",
+  "zenml>=0.90.0",
 ]
 requires-python = ">= 3.10"
 
