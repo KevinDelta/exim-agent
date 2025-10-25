@@ -56,37 +56,15 @@ class Settings(BaseSettings):
     enable_evaluation: bool = False  # Auto-evaluate responses
     evaluation_threshold: float = 0.7  # Minimum acceptable score
     
-    # Memory System Configuration
-    use_langgraph: bool = False  # Toggle LangGraph vs LangChain agents
-    enable_memory_system: bool = True  # Toggle entire memory system
-    
-    # Working Memory (WM)
-    wm_max_turns: int = 10  # Max turns to keep in working memory
-    wm_session_ttl_minutes: int = 30  # Session timeout
-    wm_max_sessions: int = 100  # Max concurrent sessions (LRU eviction)
-    
-    # Episodic Memory (EM)
-    em_collection_name: str = "episodic_memory"
-    em_ttl_days: int = 14  # EM facts expire after 14 days
-    em_distill_every_n_turns: int = 5  # Trigger distillation frequency
-    em_k_default: int = 5  # Default number of EM results to retrieve
-    em_salience_threshold: float = 0.3  # Min salience for retrieval
-    
-    # Semantic Memory (SM) - uses existing chroma_collection_name
-    sm_k_default: int = 10  # Default number of SM results to retrieve
-    sm_verified_only: bool = False  # For compliance queries, only verified docs
-    
-    # Memory Distillation & Promotion
-    enable_em_distillation: bool = True
-    enable_sm_promotion: bool = True
-    enable_intent_classification: bool = True 
-    promotion_salience_threshold: float = 0.8
-    promotion_citation_count: int = 5
-    promotion_age_days: int = 7
-    
-    # Memory Performance
-    enable_em_cache: bool = True
-    max_context_tokens: int = 8000
+    # Mem0 Memory Configuration (ALWAYS ENABLED)
+    mem0_enabled: bool = True  # Mem0 is now the primary memory system
+    mem0_vector_store: str = "chroma"  # Use existing ChromaDB
+    mem0_llm_provider: str = "openai"  # LLM for memory operations
+    mem0_llm_model: str = "gpt-5-nano-2025-08-07"  # Model for summarization/extraction
+    mem0_embedder_model: str = "text-embedding-3-small"  # Embedding model
+    mem0_enable_dedup: bool = True  # Enable automatic deduplication
+    mem0_history_limit: int = 10  # Conversation history window
+    mem0_history_db_path: str = os.getenv("MEM0_HISTORY_DB_PATH", "/app/data/mem0_history.db")  # SQLite history
     
     # Paths - explicit configuration via environment variables
     # Docker default: /app/data/* (matches volume mount in docker-compose.yaml)

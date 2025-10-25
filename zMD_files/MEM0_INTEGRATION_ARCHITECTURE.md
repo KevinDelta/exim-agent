@@ -9,7 +9,8 @@ This document outlines integrating **Mem0** as the memory layer while keeping: *
 ## Current vs Proposed Stack
 
 ### Current (Custom Memory)
-```
+
+```bash
 FastAPI → LangGraph → Custom Memory Services → ChromaDB → ZenML
          (7 nodes)   (session_manager.py,
                       deduplication.py,
@@ -20,7 +21,8 @@ FastAPI → LangGraph → Custom Memory Services → ChromaDB → ZenML
 ```
 
 ### Proposed (With Mem0)
-```
+
+```bash
 FastAPI → LangGraph → Mem0 API → ChromaDB → ZenML
          (4 nodes)    (replaces all custom memory logic)
 ```
@@ -39,7 +41,7 @@ FastAPI → LangGraph → Mem0 API → ChromaDB → ZenML
 | **Intent/Entity** | Custom classifiers (400 lines) | Mem0 built-in |
 | **Memory Service** | `service.py` (200 lines) | Mem0 wrapper (100 lines) |
 
-**Total Code Reduction: ~1,500 lines → ~100 lines**
+Total Code Reduction: ~1,500 lines → ~100 lines
 
 ---
 
@@ -319,10 +321,12 @@ async def reset_memories(user_id: str = None, session_id: str = None):
 ## ZenML Adaptations
 
 ### Document Ingestion (UNCHANGED)
+
 - Still ingests documents into ChromaDB
 - Mem0 doesn't handle document RAG, only conversational memory
 
 ### Memory Analytics (NEW)
+
 ```python
 # application/zenml_pipelines/memory_analytics_pipeline.py
 
@@ -350,11 +354,13 @@ def memory_analytics_pipeline(user_id: str):
 ## Benefits of Mem0 Integration
 
 ### 1. **Massive Code Reduction**
+
 - **Before**: ~1,500 lines of custom memory code
 - **After**: ~100 lines (thin wrapper)
 - **Reduction**: 93% less code to maintain
 
 ### 2. **Built-in Features**
+
 - ✅ Automatic deduplication (no custom similarity checks)
 - ✅ Conversation summarization (no custom LLM prompts)
 - ✅ Temporal decay (memories fade naturally)
@@ -363,11 +369,13 @@ def memory_analytics_pipeline(user_id: str):
 - ✅ Intent classification (no custom classifier)
 
 ### 3. **Simplified Architecture**
+
 - **LangGraph**: 7 nodes → 4 nodes (43% reduction)
 - **Memory Service**: 9 files → 2 files
 - **Maintenance**: Much lower complexity
 
 ### 4. **Keep Your Strengths**
+
 - ✅ LangGraph orchestration
 - ✅ Multi-provider LLM architecture
 - ✅ Cross-encoder reranking
@@ -380,21 +388,25 @@ def memory_analytics_pipeline(user_id: str):
 ## Migration Strategy
 
 ### Phase 1: Install & Configure
+
 1. Add `mem0ai` to `pyproject.toml`
 2. Run `uv sync`
 3. Add Mem0 config to `config.py`
 
 ### Phase 2: Create Wrapper
+
 1. Create `memory_service/mem0_client.py`
 2. Test Mem0 connection
 3. Verify ChromaDB integration
 
 ### Phase 3: Simplify LangGraph
+
 1. Update `graph.py` (7 → 4 nodes)
 2. Wire Mem0 into nodes
 3. Test end-to-end flow
 
 ### Phase 4: Remove Custom Code
+
 1. Delete `session_manager.py`
 2. Delete `deduplication.py`
 3. Delete `conversation_summarizer.py`
@@ -403,11 +415,13 @@ def memory_analytics_pipeline(user_id: str):
 6. Delete `entity_extractor.py`
 
 ### Phase 5: Add Memory Routes
+
 1. Create `memory_routes.py`
 2. Add to FastAPI app
 3. Test CRUD operations
 
 ### Phase 6: Adapt ZenML
+
 1. Keep document ingestion pipeline
 2. Add memory analytics pipeline
 3. Remove distillation/promotion pipelines
@@ -465,7 +479,7 @@ volumes:
 
 ## Final Architecture Diagram
 
-```
+```mermaid
 ┌─────────────────────────────────────────────────┐
 │              FastAPI (API Layer)                 │
 │  /chat, /memory/*, /pipelines/*                 │
@@ -499,12 +513,14 @@ volumes:
 ## Recommendation
 
 **Use Mem0** if you want:
+
 - ✅ Less code to maintain (93% reduction)
 - ✅ Production-ready memory features
 - ✅ Faster development
 - ✅ Focus on your domain logic (RAG, reranking, providers)
 
 **Keep custom** if you want:
+
 - ⚠️ Full control over every memory operation
 - ⚠️ Custom promotion algorithms
 - ⚠️ No external dependencies

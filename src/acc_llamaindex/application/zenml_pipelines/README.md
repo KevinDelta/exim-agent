@@ -1,14 +1,15 @@
-# ZenML Pipelines
+# ZenML Pipelines (Mem0-Optimized)
 
-This directory contains ZenML pipeline implementations for the memory-aware RAG system.
+This directory contains ZenML pipeline implementations for the Mem0-powered RAG system.
 
 ## Overview
 
 The ZenML pipelines provide MLOps capabilities for:
 
-- Document ingestion
-- Conversation distillation  
-- Memory promotion
+- **Document ingestion** - Load documents into RAG knowledge base
+- **Memory analytics** - Analyze Mem0 usage patterns and generate insights
+
+**Note**: This system uses Mem0 for conversational memory management. Mem0 handles memory distillation, storage, and lifecycle automatically, eliminating the need for separate distillation/promotion pipelines.
 
 ## Architecture
 
@@ -16,10 +17,10 @@ The ZenML pipelines provide MLOps capabilities for:
 ┌──────────────────────────────────────────────┐
 │           ZenML Orchestration                │
 │                                              │
-│  ┌────────────┐  ┌──────────┐  ┌──────────┐ │
-│  │ Ingestion  │  │ Distill  │  │ Promote  │ │
-│  │  Pipeline  │  │ Pipeline │  │ Pipeline │ │
-│  └────────────┘  └──────────┘  └──────────┘ │
+│  ┌────────────┐  ┌──────────────────────┐   │
+│  │ Ingestion  │  │ Memory Analytics     │   │
+│  │  Pipeline  │  │ Pipeline (Mem0)      │   │
+│  └────────────┘  └──────────────────────┘   │
 │                                              │
 │  Benefits:                                   │
 │  • Artifact caching & lineage                │
@@ -70,82 +71,47 @@ POST /pipelines/ingest
 }
 ```
 
-### 2. Distillation Pipeline (`distillation_pipeline.py`)
+### 2. Memory Analytics Pipeline (`memory_analytics_pipeline.py`)
 
-Converts conversation distillation into a tracked pipeline with:
+Analyzes Mem0 memory usage patterns and generates actionable insights.
 
 **Steps:**
 
-1. `fetch_recent_turns` - Get conversation history
-2. `summarize_conversation` - LLM summarization
-3. `extract_facts` - Extract atomic facts
-4. `deduplicate_facts` - Remove duplicates
-5. `store_episodic_facts` - Persist to EM
+1. `fetch_user_memories` - Retrieve all memories for a user from Mem0
+2. `analyze_memory_patterns` - Compute statistics (count, types, avg length)
+3. `generate_insights` - Generate recommendations based on patterns
 
 **Benefits:**
 
-- Track which LLM generated which facts
-- Compare different summarization prompts
-- Measure fact extraction quality
-- Full lineage from turns to facts
+- Track memory growth over time
+- Identify memory quality issues
+- Monitor Mem0 usage patterns
+- Generate cleanup recommendations
 
 **Usage:**
 
 ```python
-from acc_llamaindex.application.zenml_pipelines import run_distillation_pipeline
+from acc_llamaindex.application.zenml_pipelines import memory_analytics_pipeline
 
-result = run_distillation_pipeline(
-    session_id="user-123",
-    n_turns=5
-)
+result = memory_analytics_pipeline(user_id="user-123")
+# Returns: {stats, insights, recommendations}
 ```
 
 **API Endpoint:**
 
 ```bash
-POST /pipelines/distill
-{
-  "session_id": "user-123",
-  "force": false
-}
+POST /pipelines/analytics?user_id=user-123
 ```
 
-### 3. Promotion Pipeline (`promotion_pipeline.py`)
+**Why No Distillation/Promotion Pipelines?**
 
-Converts memory promotion into a tracked pipeline with:
+Mem0 handles these automatically:
 
-**Steps:**
+- **Distillation**: Mem0 extracts and stores memories from conversations
+- **Promotion**: Mem0 manages memory lifecycle and relevance scoring
+- **Cleanup**: Mem0 handles memory retention policies
 
-1. `scan_episodic_memory` - Find candidates
-2. `filter_promotion_candidates` - Apply criteria
-3. `transform_for_semantic_memory` - Prepare metadata
-4. `promote_to_semantic_memory` - Copy to SM
-5. `cleanup_promoted_facts` - Optional cleanup
-
-**Benefits:**
-
-- Experiment with different promotion thresholds
-- Track promotion rates over time
-- A/B test criteria changes
-- Rollback if promotion degrades quality
-
-**Usage:**
-
-```python
-from acc_llamaindex.application.zenml_pipelines import run_promotion_pipeline
-
-result = run_promotion_pipeline(
-    salience_threshold=0.8,
-    citation_threshold=5,
-    age_days=7
-)
-```
-
-**API Endpoint:**
-```bash
-POST /pipelines/promote
-{}
-```
+These pipelines are unnecessary with Mem0's built-in memory management.
 
 ## Unified Runner
 
@@ -154,25 +120,18 @@ The `runner.py` module provides a unified interface:
 ```python
 from acc_llamaindex.application.zenml_pipelines.runner import pipeline_runner
 
-# Run individual pipelines
+# Run ingestion pipeline
 pipeline_runner.run_ingestion(directory_path="/path")
-pipeline_runner.run_distillation(session_id="user-123")
-pipeline_runner.run_promotion()
 
-# Run all pipelines
-pipeline_runner.run_all_pipelines(
-    directory_path="/path",
-    session_id="user-123"
-)
+# Run memory analytics pipeline
+pipeline_runner.run_memory_analytics(user_id="user-123")
 ```
 
 ## Graceful Degradation
 
-All pipelines include fallback to existing services if ZenML is unavailable:
+The ingestion pipeline includes fallback to existing services if ZenML is unavailable:
 
 - `run_ingestion_pipeline` → `ingest_service.ingest_documents_from_directory()`
-- `run_distillation_pipeline` → `conversation_summarizer.distill()`
-- `run_promotion_pipeline` → `memory_promoter.run_promotion_cycle()`
 
 This ensures backward compatibility and allows the system to function even if ZenML dependencies have issues.
 
@@ -181,22 +140,26 @@ This ensures backward compatibility and allows the system to function even if Ze
 To enable full ZenML features:
 
 1. **Install dependencies** (already in pyproject.toml):
+
    ```bash
    uv sync
    ```
 
 2. **Initialize ZenML** (when dependency issues are resolved):
+
    ```bash
    zenml init
    zenml stack set default
    ```
 
 3. **Start MLflow** (for experiment tracking):
+
    ```bash
    mlflow server --host 127.0.0.1 --port 5000
    ```
 
 4. **Configure stack** (optional, for production):
+
    ```bash
    zenml stack create production \
      --orchestrator kubernetes \
@@ -206,11 +169,13 @@ To enable full ZenML features:
 
 ## Current Status
 
-✅ Pipeline structure implemented  
-✅ Graceful fallback to existing services  
-✅ API endpoints integrated  
-⚠️ ZenML dependency compatibility issues (being resolved)  
-⏳ Full ZenML orchestration (pending dependency fix)  
+✅ **Ingestion Pipeline**: Fully implemented and functional  
+✅ **Memory Analytics Pipeline**: Fully implemented and functional  
+✅ **Graceful fallback**: Falls back to existing services if ZenML unavailable  
+✅ **API endpoints**: Integrated with FastAPI  
+✅ **ZenML initialized**: Local stack configured and operational  
+⏳ **Testing**: Pipelines need end-to-end testing  
+⏳ **MLflow**: Experiment tracking not yet configured  
 
 ## Notes
 
@@ -224,18 +189,18 @@ To enable full ZenML features:
 ### FastAPI Routes
 
 New routes added to `infrastructure/api/main.py`:
-- `POST /pipelines/ingest` - ZenML ingestion
-- `POST /pipelines/distill` - ZenML distillation
-- `POST /pipelines/promote` - ZenML promotion
-- `GET /pipelines/status` - Check availability
+
+- `POST /pipelines/ingest` - ZenML ingestion pipeline
+- `POST /pipelines/analytics` - Memory analytics pipeline
+- `GET /pipelines/status` - Check ZenML availability
 
 ### Health Check
 
-`GET /health` now includes `zenml_pipelines_enabled` field.
+`GET /health` now includes `zenml` field showing ZenML availability.
 
 ### Existing Routes
 
 Original routes remain unchanged for compatibility:
-- `POST /ingest-documents` - Direct ingestion
-- `POST /memory/distill` - Direct distillation
-- `POST /memory/promote` - Direct promotion
+
+- `POST /ingest-documents` - Direct ingestion (non-ZenML)
+- `POST /memory/*` - Mem0 memory management routes

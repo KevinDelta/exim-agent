@@ -1,8 +1,8 @@
-# ZenML Integration - Quick Start
+# ZenML Integration - Quick Start (Mem0-Optimized)
 
-## ✅ Status: Fully Operational
+## ✅ Status: Operational (Simplified Architecture)
 
-ZenML is now successfully integrated and ready to use for MLOps workflows.
+ZenML is successfully integrated with 2 pipelines optimized for Mem0-based memory management.
 
 ## What Was Fixed
 
@@ -22,6 +22,18 @@ ZenML is now successfully integrated and ready to use for MLOps workflows.
 uv run python test_zenml_pipeline.py
 ```
 
+## Available Pipelines
+
+### 1. Ingestion Pipeline
+
+Load documents into RAG knowledge base with tracking and caching.
+
+### 2. Memory Analytics Pipeline
+
+Analyze Mem0 usage patterns and generate insights.
+
+**Note**: Distillation and promotion pipelines are not needed - Mem0 handles memory lifecycle automatically.
+
 ## Using ZenML Pipelines
 
 ### Option 1: Via Python
@@ -29,18 +41,14 @@ uv run python test_zenml_pipeline.py
 ```python
 from acc_llamaindex.application.zenml_pipelines import (
     run_ingestion_pipeline,
-    run_distillation_pipeline,
-    run_promotion_pipeline
+    memory_analytics_pipeline
 )
 
 # Run ingestion with ZenML tracking
 result = run_ingestion_pipeline("/path/to/documents")
 
-# Run distillation with artifact lineage
-result = run_distillation_pipeline("session-123", n_turns=5)
-
-# Run promotion with experiment tracking
-result = run_promotion_pipeline(salience_threshold=0.8)
+# Run memory analytics
+result = memory_analytics_pipeline(user_id="user-123")
 ```
 
 ### Option 2: Via API
@@ -57,15 +65,8 @@ curl -X POST http://localhost:8000/pipelines/ingest \
   -H "Content-Type: application/json" \
   -d '{"directory_path": "/path/to/documents"}'
 
-# Run distillation pipeline
-curl -X POST http://localhost:8000/pipelines/distill \
-  -H "Content-Type: application/json" \
-  -d '{"session_id": "user-123", "force": false}'
-
-# Run promotion pipeline
-curl -X POST http://localhost:8000/pipelines/promote \
-  -H "Content-Type: application/json" \
-  -d '{}'
+# Run memory analytics pipeline
+curl -X POST http://localhost:8000/pipelines/analytics?user_id=user-123
 ```
 
 ## ZenML Features Now Available
@@ -144,8 +145,7 @@ View pipelines in a web UI:
 |----------|--------|-------------|
 | `/pipelines/status` | GET | Check ZenML availability |
 | `/pipelines/ingest` | POST | Run ingestion with tracking |
-| `/pipelines/distill` | POST | Run distillation with tracking |
-| `/pipelines/promote` | POST | Run promotion with tracking |
+| `/pipelines/analytics` | POST | Run memory analytics |
 
 ## Benefits Over Direct Service Calls
 
@@ -170,15 +170,22 @@ result = run_ingestion_pipeline("/path")
 # ✅ Reproducibility
 ```
 
-## Next Steps
+## Next Steps (Optional Enhancements)
 
-### Phase 3: Evaluation Pipeline
+### Testing & Validation
 
-- Create RAGAS metrics integration
-- Build evaluation pipeline
-- Set up A/B testing framework
+- Run end-to-end pipeline tests
+- Validate artifact caching works
+- Test pipeline failure scenarios
+- Verify lineage tracking
 
-### Phase 4: Production Deployment
+### MLflow Integration
+
+- Set up MLflow experiment tracker
+- Configure experiment tracking for pipelines
+- Compare different configurations
+
+### Production Deployment (Future)
 
 - Configure Kubernetes orchestrator
 - Set up S3 artifact store

@@ -1,368 +1,325 @@
-"""LangGraph state machine for memory-aware chat."""
+"""Simplified LangGraph state machine with Mem0 integration."""
 
-from typing import TypedDict, List, Dict, Any, Annotated
+from typing import TypedDict, List, Dict, Any
 from langgraph.graph import StateGraph, END
 from loguru import logger
-import operator
 
 from acc_llamaindex.config import config
-from acc_llamaindex.application.chat_service.session_manager import session_manager
-from acc_llamaindex.application.memory_service.intent_classifier import intent_classifier
-from acc_llamaindex.application.memory_service.entity_extractor import entity_extractor
-from acc_llamaindex.application.memory_service.service import memory_service
-from acc_llamaindex.application.memory_service.salience_tracker import salience_tracker
-from acc_llamaindex.application.memory_service.conversation_summarizer import conversation_summarizer
+from acc_llamaindex.application.memory_service.mem0_client import mem0_client
+from acc_llamaindex.infrastructure.db.chroma_client import chroma_client
+from acc_llamaindex.application.reranking_service.service import reranking_service
 from acc_llamaindex.infrastructure.llm_providers.langchain_provider import get_llm
 
 
-def _keep_last(left: Any, right: Any) -> Any:
-    """Reducer that keeps the last (rightmost) value."""
-    return right if right is not None else left
-
-
 class MemoryState(TypedDict):
-    """State schema for memory-aware chat flow."""
-    # Input - keep last value from parallel updates
-    user_query: Annotated[str, _keep_last]
-    session_id: Annotated[str, _keep_last]
+    """Simplified state schema for Mem0-powered chat."""
+    # Input
+    query: str
+    user_id: str
+    session_id: str
     
-    # Working Memory
-    wm_context: Annotated[List[Dict[str, Any]], _keep_last]  # Last N conversation turns
+    # Mem0 memories (replaces WM + EM + intent/entity extraction)
+    relevant_memories: List[Dict[str, Any]]
     
-    # Intent & Entity Detection
-    intent: Annotated[str, _keep_last]
-    confidence: Annotated[float, _keep_last]
-    entities: Annotated[List[Dict[str, Any]], _keep_last]
+    # RAG context (document retrieval)
+    rag_context: List[Dict[str, Any]]
     
-    # Memory Retrieval - allow parallel updates to accumulate
-    em_results: Annotated[List[Dict[str, Any]], _keep_last]  # Episodic memory results
-    sm_results: Annotated[List[Dict[str, Any]], _keep_last]  # Semantic memory results
-    reranked_context: Annotated[List[Dict[str, Any]], _keep_last]  # Combined + reranked
+    # Combined & reranked context
+    final_context: List[Dict[str, Any]]
     
-    # Generation
-    response: Annotated[str, _keep_last]
-    citations: Annotated[List[Dict[str, Any]], _keep_last] # citations from memory
-    
-    # Metadata
-    should_distill: Annotated[bool, _keep_last]
-    retrieval_ms: Annotated[float, _keep_last]
-    generation_ms: Annotated[float, _keep_last]
+    # Response
+    response: str
+    citations: List[str]
 
 
-def load_working_memory(state: MemoryState) -> MemoryState:
+def load_memories(state: MemoryState) -> MemoryState:
     """
-    Load last N conversation turns from session.
+    Load relevant memories from Mem0.
     
-    Fast, in-memory retrieval of recent context.
+    Replaces:
+    - load_working_memory (session context)
+    - classify_intent (intent detection)
+    - extract_entities (entity extraction)
+    - query_episodic_memory (EM retrieval)
+    
+    Mem0 handles all of this automatically.
     """
-    logger.info(f"Loading working memory for session: {state['session_id']}")
+    logger.info(f"Loading Mem0 memories for session: {state['session_id']}")
     
-    # Load recent turns from session manager
-    turns = session_manager.get_recent_turns(
-        state["session_id"],
-        n=config.wm_max_turns
+    query = state["query"]
+    user_id = state["user_id"]
+    session_id = state["session_id"]
+    
+    if not mem0_client.is_enabled():
+        logger.warning("Mem0 not enabled, skipping memory load")
+        state["relevant_memories"] = []
+        return state
+    
+    # Mem0 automatically:
+    # - Retrieves recent conversation context
+    # - Classifies intent and extracts entities
+    # - Searches episodic memories
+    # - Ranks by relevance
+    results = mem0_client.search(
+        query=query,
+        user_id=user_id,
+        session_id=session_id,
+        limit=config.mem0_history_limit
     )
     
-    state["wm_context"] = turns
-    logger.debug(f"Loaded {len(turns)} turns from working memory")
-    
-    return state
-
-
-def classify_intent(state: MemoryState) -> MemoryState:
-    """
-    Detect user intent and extract entities.
-    
-    Uses LLM-based classification for:
-    - quote_request
-    - compliance_query
-    - shipment_tracking
-    - general
-    """
-    logger.info(f"Classifying intent for query: {state['user_query'][:50]}...")
-    
-    # Classify intent
-    if config.enable_intent_classification:
-        classification = intent_classifier.classify(state["user_query"])
-        state["intent"] = classification["intent"]
-        state["confidence"] = classification["confidence"]
+    # Handle dict or list response from Mem0
+    if isinstance(results, dict):
+        memories = results.get('results', [])
     else:
-        state["intent"] = "general"
-        state["confidence"] = 1.0
+        memories = results if isinstance(results, list) else []
     
-    # Extract entities
-    entities = entity_extractor.extract(state["user_query"])
-    state["entities"] = entities
-    
-    logger.info(
-        f"Intent: {state['intent']} (confidence: {state['confidence']:.2f}), "
-        f"Entities: {len(entities)}"
-    )
+    state["relevant_memories"] = memories
+    logger.info(f"Loaded {len(memories)} relevant memories from Mem0")
     
     return state
 
 
-def query_episodic_memory(state: MemoryState) -> Dict[str, Any]:
+def query_documents(state: MemoryState) -> MemoryState:
     """
-    Query EM collection filtered by session + salience.
+    Query document store for RAG context (semantic memory).
     
-    Retrieves recent conversation facts from this session.
-    
-    Returns:
-        Dict with only 'em_results' key to avoid parallel update conflicts
+    This is separate from Mem0 - it's your knowledge base documents.
+    Mem0 handles conversational memory, this handles document RAG.
     """
-    if not config.enable_memory_system:
-        return {"em_results": []}
+    logger.info("Querying document store for RAG context")
     
-    logger.info(f"Querying episodic memory for session: {state['session_id']}")
+    query = state["query"]
     
-    # Query via memory service (handles EM retrieval)
-    recall_result = memory_service.recall(
-        query=state["user_query"],
-        session_id=state["session_id"],
-        intent=state["intent"],
-        entities=state["entities"],
-        k_em=config.em_k_default,
-        k_sm=0  # Only EM in this node
-    )
+    try:
+        # Query ChromaDB documents collection
+        results = chroma_client.query_documents(
+            query_text=query,
+            k=config.retrieval_k
+        )
+        
+        state["rag_context"] = results
+        logger.info(f"Retrieved {len(results)} RAG documents")
+        
+    except Exception as e:
+        logger.error(f"Failed to query documents: {e}")
+        state["rag_context"] = []
     
-    em_results = recall_result["em_results"]
-    logger.info(f"Retrieved {len(em_results)} EM results")
-    
-    return {"em_results": em_results}
+    return state
 
 
-def query_semantic_memory(state: MemoryState) -> Dict[str, Any]:
+def rerank_and_fuse(state: MemoryState) -> MemoryState:
     """
-    Query SM collection filtered by entities + intent.
+    Combine memories + RAG results and rerank with cross-encoder.
     
-    Retrieves long-term knowledge from documents.
+    Fuses:
+    - Mem0 memories (conversational context)
+    - RAG documents (knowledge base)
     
-    Returns:
-        Dict with only 'sm_results' key to avoid parallel update conflicts
+    Then reranks for relevance.
     """
-    logger.info(f"Querying semantic memory with intent: {state['intent']}")
+    logger.info("Reranking and fusing memory + RAG context")
     
-    # Query via memory service (handles SM retrieval)
-    recall_result = memory_service.recall(
-        query=state["user_query"],
-        session_id=state["session_id"],
-        intent=state["intent"],
-        entities=state["entities"],
-        k_em=0,  # Only SM in this node
-        k_sm=config.sm_k_default
-    )
+    query = state["query"]
+    memories = state["relevant_memories"]
+    rag_docs = state["rag_context"]
     
-    sm_results = recall_result["sm_results"]
-    logger.info(f"Retrieved {len(sm_results)} SM results")
+    # Convert memories to document format
+    memory_docs = []
+    for mem in memories:
+        if isinstance(mem, dict):
+            content = mem.get("memory", str(mem))
+            mem_id = mem.get("id", "unknown")
+        else:
+            content = str(mem)
+            mem_id = "unknown"
+        
+        memory_docs.append({
+            "content": content,
+            "metadata": {
+                "source": "mem0",
+                "memory_id": mem_id,
+                "type": "conversational_memory"
+            }
+        })
     
-    return {"sm_results": sm_results}
-
-
-def rerank_results(state: MemoryState) -> MemoryState:
-    """
-    Combine and rerank EM + SM results.
+    # Combine both sources
+    all_docs = memory_docs + rag_docs
     
-    Uses existing reranking service via memory service.
-    """
-    em_count = len(state["em_results"])
-    sm_count = len(state["sm_results"])
-    logger.info(f"Reranking {em_count} EM + {sm_count} SM results")
+    if not all_docs:
+        logger.warning("No context available for generation")
+        state["final_context"] = []
+        return state
     
-    # Use memory service to merge and rerank
-    recall_result = memory_service.recall(
-        query=state["user_query"],
-        session_id=state["session_id"],
-        intent=state["intent"],
-        entities=state["entities"],
-        k_em=config.em_k_default,
-        k_sm=config.sm_k_default
-    )
-    
-    state["reranked_context"] = recall_result["combined_results"]
-    logger.info(f"Reranked to {len(state['reranked_context'])} results")
+    # Rerank if enabled
+    if config.enable_reranking and len(all_docs) > 1:
+        try:
+            # Convert dict documents to LangChain Documents for reranking
+            from langchain_core.documents import Document
+            lc_docs = [
+                Document(page_content=doc["content"], metadata=doc.get("metadata", {}))
+                for doc in all_docs
+            ]
+            
+            # Initialize reranker if not already done
+            if not reranking_service.is_enabled():
+                reranking_service.initialize()
+            
+            # Rerank
+            reranked_docs = reranking_service.rerank(
+                query=query,
+                documents=lc_docs,
+                top_k=config.rerank_top_k
+            )
+            
+            # Convert back to dict format
+            state["final_context"] = [
+                {
+                    "content": doc.page_content,
+                    "metadata": doc.metadata
+                }
+                for doc in reranked_docs
+            ]
+            logger.info(f"Reranked to {len(reranked_docs)} documents")
+        except Exception as e:
+            logger.error(f"Reranking failed: {e}")
+            state["final_context"] = all_docs[:config.rerank_top_k]
+    else:
+        state["final_context"] = all_docs[:config.rerank_top_k]
     
     return state
 
 
 def generate_response(state: MemoryState) -> MemoryState:
     """
-    Generate answer with citations.
-    
-    Uses LLM with structured context from memory tiers.
+    Generate response with LLM using final context.
     """
-    logger.info("Generating response with memory context")
+    logger.info("Generating response")
     
-    # Format context from memory
-    context_parts = []
-    for i, result in enumerate(state["reranked_context"]):
-        source = result["source"]
-        text = result["text"]
-        context_parts.append(f"[{source}-{i+1}] {text}")
+    query = state["query"]
+    context = state["final_context"]
     
-    context_text = "\n\n".join(context_parts) if context_parts else "No relevant context found."
-    
-    # Format working memory (recent conversation)
-    wm_text = ""
-    if state["wm_context"]:
-        wm_parts = []
-        for turn in state["wm_context"][-3:]:  # Last 3 turns
-            wm_parts.append(f"User: {turn['user_message']}")
-            wm_parts.append(f"Assistant: {turn['assistant_message']}")
-        wm_text = "\n".join(wm_parts)
-    
-    # Build prompt (from retrieved context and retrieved memory)
-    prompt = f"""Answer the user's question using the provided context.
-
-Recent Conversation:
-{wm_text if wm_text else "(No previous conversation)"}
-
-Relevant Context:
-{context_text}
-
-User Question: {state['user_query']}
-
-Provide a helpful answer based on the context. If you cite information, reference the source [EM-1], [SM-2], etc."""
-    
-    # Generate with LLM
     llm = get_llm()
-    response = llm.invoke(prompt)
     
-    # Extract text from response
-    if hasattr(response, 'content'):
-        state["response"] = response.content
-    else:
-        state["response"] = str(response)
+    # Build context string
+    context_str = "\n\n".join([
+        f"[{i+1}] {doc['content'][:500]}"  # Truncate long docs
+        for i, doc in enumerate(context)
+    ])
     
-    # Parse citations (simple regex)
-    import re
-    citations = []
-    citation_pattern = r"\[(EM|SM)-(\d+)\]"
-    for match in re.finditer(citation_pattern, state["response"]):
-        source_type = match.group(1)
-        index = int(match.group(2)) - 1
-        if index < len(state["reranked_context"]):
-            # Copy the original result to avoid mutating shared state
-            citation = state["reranked_context"][index].copy()
-            # Extract a stable identifier for salience tracking
-            citation_id = citation.get("metadata", {}).get("id") or citation.get("metadata", {}).get("doc_id")
-            if citation_id:
-                citation["doc_id"] = citation_id
-            citations.append(citation)
+    # Create prompt
+    prompt = f"""Answer the question using the following context. If the context doesn't contain relevant information, say so.
+
+Context:
+{context_str}
+
+Question: {query}
+
+Answer:"""
     
-    state["citations"] = citations
-    
-    if citations:
-        salience_tracker.track_citations(citations)
-    
-    logger.info(f"Generated response with {len(citations)} citations")
+    try:
+        result = llm.invoke(prompt)
+        state["response"] = result.content
+        
+        # Extract citations
+        citations = []
+        for doc in context:
+            source = doc.get("metadata", {}).get("source", "unknown")
+            if source not in citations:
+                citations.append(source)
+        
+        state["citations"] = citations[:5]  # Limit to top 5 sources
+        
+        logger.info("Response generated successfully")
+        
+    except Exception as e:
+        logger.error(f"Failed to generate response: {e}")
+        state["response"] = "I apologize, but I encountered an error generating a response."
+        state["citations"] = []
     
     return state
 
 
-def update_working_memory(state: MemoryState) -> MemoryState:
+def update_memories(state: MemoryState) -> MemoryState:
     """
-    Update WM and check if distillation needed.
+    Store conversation turn in Mem0.
     
-    Updates session state and schedules distillation if threshold reached.
+    Replaces:
+    - update_working_memory (session management)
+    - distillation (conversation summarization)
+    - deduplication (duplicate detection)
+    - promotion (EM → SM promotion)
+    
+    Mem0 handles all of this automatically.
     """
-    logger.info(f"Updating working memory for session: {state['session_id']}")
+    logger.info("Updating Mem0 with conversation turn")
     
-    # Add this turn to session
-    session_manager.add_turn(
-        session_id=state["session_id"],
-        user_message=state["user_query"],
-        assistant_message=state["response"],
-        metadata={
-            "intent": state["intent"],
-            "entities": state["entities"],
-            "citations": state["citations"]
-        }
-    )
+    query = state["query"]
+    response = state["response"]
+    user_id = state["user_id"]
+    session_id = state["session_id"]
     
-    # Check if we should trigger distillation
-    session = session_manager.get_session(state["session_id"])
-    turn_count = session["turn_count"] if session else 0
+    if not mem0_client.is_enabled():
+        logger.warning("Mem0 not enabled, skipping memory update")
+        return state
     
-    state["should_distill"] = (
-        config.enable_em_distillation and 
-        turn_count > 0 and
-        turn_count % config.em_distill_every_n_turns == 0
-    )
+    # Mem0 automatically:
+    # - Deduplicates similar memories
+    # - Summarizes conversations
+    # - Manages temporal decay
+    # - Promotes important facts to long-term memory
+    messages = [
+        {"role": "user", "content": query},
+        {"role": "assistant", "content": response}
+    ]
     
-    if state["should_distill"]:
-        logger.info(f"Distillation triggered after {turn_count} turns")
-        
-        # Get recent turns for distillation
-        recent_turns = session_manager.get_recent_turns(
-            state["session_id"],
-            n=config.em_distill_every_n_turns
+    try:
+        mem0_client.add(
+            messages=messages,
+            user_id=user_id,
+            session_id=session_id
         )
+        logger.info("Conversation stored in Mem0")
         
-        # Distill conversation into facts
-        if recent_turns:
-            distill_result = conversation_summarizer.distill(
-                session_id=state["session_id"],
-                turns=recent_turns
-            )
-            
-            logger.info(
-                f"Distillation complete: {distill_result.get('facts_created', 0)} facts created"
-            )
-    else:
-        logger.debug("No distillation needed at this time")
+    except Exception as e:
+        logger.error(f"Failed to update Mem0: {e}")
     
     return state
 
 
-def create_memory_graph() -> StateGraph:
+def build_memory_graph() -> StateGraph:
     """
-    Build the LangGraph state machine for memory-aware chat.
+    Build the simplified LangGraph state machine with Mem0.
     
-    Returns:
-        Compiled graph ready for execution
+    Reduced from 7 nodes to 5 nodes:
+    1. load_memories (Mem0) - replaces 3 nodes
+    2. query_documents (RAG) - unchanged
+    3. rerank_and_fuse (cross-encoder) - unchanged
+    4. generate_response (LLM) - unchanged
+    5. update_memories (Mem0) - replaces 3 nodes
     """
-    graph = StateGraph(MemoryState)
+    logger.info("Building Mem0-powered LangGraph")
+    
+    workflow = StateGraph(MemoryState)
     
     # Add nodes
-    graph.add_node("load_wm", load_working_memory)
-    graph.add_node("classify", classify_intent)
-    graph.add_node("query_em", query_episodic_memory)
-    graph.add_node("query_sm", query_semantic_memory)
-    graph.add_node("rerank", rerank_results)
-    graph.add_node("generate", generate_response)
-    graph.add_node("update_wm", update_working_memory)
+    workflow.add_node("load_memories", load_memories)
+    workflow.add_node("query_documents", query_documents)
+    workflow.add_node("rerank_and_fuse", rerank_and_fuse)
+    workflow.add_node("generate_response", generate_response)
+    workflow.add_node("update_memories", update_memories)
     
-    # Define edges (flow)
-    graph.set_entry_point("load_wm")
-    graph.add_edge("load_wm", "classify")
+    # Define edges (sequential flow)
+    workflow.set_entry_point("load_memories")
+    workflow.add_edge("load_memories", "query_documents")
+    workflow.add_edge("query_documents", "rerank_and_fuse")
+    workflow.add_edge("rerank_and_fuse", "generate_response")
+    workflow.add_edge("generate_response", "update_memories")
+    workflow.add_edge("update_memories", END)
     
-    # Parallel execution for EM and SM queries
-    graph.add_edge("classify", "query_em")
-    graph.add_edge("classify", "query_sm")
+    logger.info("Mem0-powered LangGraph compiled successfully")
     
-    # Both queries must complete before reranking
-    graph.add_edge("query_em", "rerank")
-    graph.add_edge("query_sm", "rerank")
-    
-    # Sequential flow for generation and WM update
-    graph.add_edge("rerank", "generate")
-    graph.add_edge("generate", "update_wm")
-    
-    # Finish after WM update
-    graph.add_edge("update_wm", END)
-    
-    logger.info("Memory graph created successfully")
-    return graph.compile()
+    return workflow.compile()
 
 
-# Global graph instance (lazy initialization)
-_memory_graph = None
-
-
-def get_memory_graph() -> StateGraph:
-    """Get or create the compiled memory graph."""
-    global _memory_graph
-    if _memory_graph is None:
-        _memory_graph = create_memory_graph()
-    return _memory_graph
+# Global graph instance
+memory_graph = build_memory_graph()

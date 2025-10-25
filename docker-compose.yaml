@@ -8,10 +8,22 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      # Override .env paths for Docker
+      - DOCUMENTS_PATH=/app/data/documents
+      - CHROMA_DB_PATH=/app/data/chroma_db
+      - MEM0_HISTORY_DB_PATH=/app/data/mem0_history.db
     volumes:
       - ./data:/app/data
     networks:
       - agent-api-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 volumes:
   data:

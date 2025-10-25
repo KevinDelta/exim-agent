@@ -9,131 +9,98 @@ from acc_llamaindex.infrastructure.llm_providers.langchain_provider import get_e
 
 class ChromaDBClient:
     """
-    ChromaDB client for vector storage and retrieval.
+    Shared ChromaDB client managing multiple collections.
     
-    Uses a single persistent client instance with shared embeddings
-    to minimize memory usage and connection overhead.
+    Collections:
+    - documents: RAG document embeddings
+    - mem0_memories: Mem0 conversational memory (if enabled)
+    
+    Single client instance shared across all services for connection pooling.
     """
 
     def __init__(self):
         self._client = None
         self._embeddings = None
-        self._vector_store = None  # Semantic Memory (SM)
-        self._episodic_store = None  # Episodic Memory (EM)
-        self._collection = None
-        self._episodic_collection = None
+        self._rag_vector_store = None
+        self._rag_collection = None
 
     def initialize(self):
-        """
-        Initialize ChromaDB client with persistent storage.
-        
-        Creates a single PersistentClient instance and shared embeddings
-        to reduce memory usage and connection overhead.
-        """
+        """Initialize shared ChromaDB client and RAG collection."""
         try:
-            logger.info(f"Initializing ChromaDB at {config.chroma_db_path}")
+            logger.info(f"Initializing shared ChromaDB client at {config.chroma_db_path}")
             
-            # Create single persistent client instance (connection pooling)
-            self._client = chromadb.PersistentClient(path=config.chroma_db_path)
+            chroma_settings = ChromaSettings(
+                anonymized_telemetry=False,
+                allow_reset=True,
+            )
+            self._client = chromadb.PersistentClient(
+                path=config.chroma_db_path,
+                settings=chroma_settings
+            )
             
-            # Initialize embeddings once (shared across all collections)
             self._embeddings = get_embeddings()
             
-            logger.info("ChromaDB client and embeddings initialized")
+            logger.info("Shared ChromaDB client initialized")
             
-            # Create LangChain Chroma vector store using existing client
-            self._vector_store = Chroma(
+            # Create RAG documents collection
+            self._rag_vector_store = Chroma(
                 client=self._client,
                 collection_name=config.chroma_collection_name,
                 embedding_function=self._embeddings,
                 collection_metadata={"description": "Document embeddings for RAG"},
             )
             
-            # Get direct collection reference
-            self._collection = self._vector_store._collection
+            self._rag_collection = self._rag_vector_store._collection
             
-            logger.info(f"Semantic memory collection initialized: {config.chroma_collection_name}")
-            
-            # Initialize episodic memory collection if memory system is enabled
-            if config.enable_memory_system:
-                self._initialize_episodic_memory()
+            logger.info(f"RAG collection initialized: {config.chroma_collection_name}")
             
         except Exception as e:
             logger.error(f"Failed to initialize ChromaDB: {e}")
             raise
     
-    def _initialize_episodic_memory(self):
-        """
-        Initialize the episodic memory collection using existing client.
-        
-        Reuses the same ChromaDB client and embeddings instance
-        to avoid duplicate connections and memory overhead.
-        """
-        try:
-            logger.info(f"Initializing episodic memory collection: {config.em_collection_name}")
-            
-            # Create episodic store using SAME client and embeddings
-            self._episodic_store = Chroma(
-                client=self._client,  # Reuse existing client
-                collection_name=config.em_collection_name,
-                embedding_function=self._embeddings,  # Reuse existing embeddings
-                collection_metadata={"description": "Episodic memory for conversations"},
-            )
-            
-            # Get direct collection reference
-            self._episodic_collection = self._episodic_store._collection
-            
-            logger.info("Episodic memory collection initialized successfully")
-            
-        except Exception as e:
-            logger.error(f"Failed to initialize episodic memory: {e}")
-            raise
+    def get_client(self):
+        """Get the shared ChromaDB client for use by other services (e.g., Mem0)."""
+        if self._client is None:
+            raise RuntimeError("ChromaDB not initialized. Call initialize() first.")
+        return self._client
 
     def get_vector_store(self) -> Chroma:
-        """Get the LangChain Chroma vector store instance."""
-        if self._vector_store is None:
+        """Get the RAG LangChain Chroma vector store instance."""
+        if self._rag_vector_store is None:
             raise RuntimeError("ChromaDB not initialized. Call initialize() first.")
-        return self._vector_store
+        return self._rag_vector_store
 
     def get_collection(self):
-        """Get the underlying ChromaDB collection."""
-        if self._collection is None:
+        """Get the RAG collection for direct operations."""
+        if self._rag_collection is None:
             raise RuntimeError("ChromaDB not initialized. Call initialize() first.")
-        return self._collection
+        return self._rag_collection
 
     def reset_collection(self):
-        """
-        Reset the collection by deleting and recreating it.
-        
-        Uses existing client and embeddings instances to maintain
-        connection pooling benefits.
-        """
+        """Reset the RAG documents collection."""
         try:
-            logger.warning(f"Resetting collection: {config.chroma_collection_name}")
+            logger.warning(f"Resetting RAG collection: {config.chroma_collection_name}")
             
-            # Delete the old collection
             self._client.delete_collection(name=config.chroma_collection_name)
             
-            # Reinitialize the vector store using existing client and embeddings
-            self._vector_store = Chroma(
-                client=self._client,  # Reuse existing client
+            self._rag_vector_store = Chroma(
+                client=self._client,
                 collection_name=config.chroma_collection_name,
-                embedding_function=self._embeddings,  # Reuse existing embeddings
+                embedding_function=self._embeddings,
                 collection_metadata={"description": "Document embeddings for RAG"},
             )
             
-            # Update collection reference
-            self._collection = self._vector_store._collection
+            self._rag_collection = self._rag_vector_store._collection
             
-            logger.info("Collection reset successfully")
+            logger.info("RAG collection reset successfully")
         except Exception as e:
-            logger.error(f"Failed to reset collection: {e}")
+            logger.error(f"Failed to reset RAG collection: {e}")
             raise
 
     def get_collection_stats(self) -> dict:
-        """Get statistics about the collection."""
+        """Get statistics about the RAG collection."""
         try:
-            count = self._collection.count()
+            count = self._rag_collection.count()
             return {
                 "collection_name": config.chroma_collection_name,
                 "document_count": count,
@@ -142,67 +109,6 @@ class ChromaDBClient:
         except Exception as e:
             logger.error(f"Failed to get collection stats: {e}")
             return {"error": str(e)}
-    
-    def get_episodic_store(self) -> Chroma:
-        """Get the episodic memory vector store instance."""
-        if self._episodic_store is None:
-            raise RuntimeError("Episodic memory not initialized. Enable memory system in config.")
-        return self._episodic_store
-    
-    def query_episodic(
-        self,
-        session_id: str,
-        query: str,
-        k: int = 5
-    ) -> list:
-        """
-        Query episodic memory collection filtered by session.
-        
-        Args:
-            session_id: Session to filter by
-            query: Query text
-            k: Number of results
-            
-        Returns:
-            List of documents
-        """
-        if self._episodic_store is None:
-            logger.warning("Episodic memory not initialized")
-            return []
-        
-        try:
-            # Query with session filter
-            results = self._episodic_store.similarity_search(
-                query,
-                k=k,
-                filter={"session_id": session_id}
-            )
-            return results
-        except Exception as e:
-            logger.error(f"Failed to query episodic memory: {e}")
-            return []
-    
-    def write_episodic(self, texts: list, metadatas: list):
-        """
-        Write items to episodic memory.
-        
-        Args:
-            texts: List of text content
-            metadatas: List of metadata dicts (must include session_id, salience, ttl_date)
-        """
-        if self._episodic_store is None:
-            logger.warning("Episodic memory not initialized")
-            return
-        
-        try:
-            self._episodic_store.add_texts(
-                texts=texts,
-                metadatas=metadatas
-            )
-            logger.info(f"Wrote {len(texts)} items to episodic memory")
-        except Exception as e:
-            logger.error(f"Failed to write to episodic memory: {e}")
-            raise
 
 
 # Global instance
