@@ -114,7 +114,7 @@ Active stack: 'default' (repository)
 
 ### Created/Updated
 
-```
+```bash
 src/acc_llamaindex/application/zenml_pipelines/
 ├── __init__.py                    ✅ Fixed imports
 ├── README.md                      ✅ Updated to reflect 2 pipelines
@@ -130,7 +130,7 @@ Documentation/
 
 ### Not Created (Intentionally)
 
-```
+```bash
 ❌ distillation_pipeline.py  - Not needed (Mem0 handles)
 ❌ promotion_pipeline.py      - Not needed (Mem0 handles)
 ```
@@ -209,6 +209,7 @@ uv run zenml stack describe
 ### Immediate (Recommended)
 
 1. **End-to-End Testing**
+
    ```bash
    # Test ingestion pipeline
    uv run python -c "
@@ -235,7 +236,8 @@ uv run zenml stack describe
 
 ### Short-Term (1-2 weeks)
 
-4. **MLflow Integration**
+4: **MLflow Integration**
+
    ```bash
    # Start MLflow server
    mlflow server --host 127.0.0.1 --port 5000
@@ -246,6 +248,7 @@ uv run zenml stack describe
    ```
 
 5. **Experiment Tracking**
+
    - Compare different chunking strategies (512 vs 1024)
    - Test different embedding models
    - Track costs and performance
