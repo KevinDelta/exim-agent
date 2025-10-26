@@ -33,34 +33,34 @@
   - Verify serialization/deserialization for API compatibility
   - _Requirements: 1.1, 3.1, 7.1_
 
-- [ ] 2. Implement compliance tools with external API integration
+- [x] 2. Implement compliance tools with external API integration
   - Enhance existing HTS, sanctions, refusals, and rulings tools
   - Add comprehensive error handling and data validation
   - Implement caching and rate limiting for external APIs
   - _Requirements: 1.2, 2.2, 5.1, 5.2_
 
-- [ ] 2.1 Enhance HTS tool implementation
+- [x] 2.1 Enhance HTS tool implementation
   - Extend `src/acc_llamaindex/domain/tools/hts_tool.py` with real USITC API integration
   - Add comprehensive HTS code validation and normalization
   - Implement duty rate calculation and special requirements detection
   - Add support for FTA preferential rates and origin rules
   - _Requirements: 1.2, 2.2, 5.1_
 
-- [ ] 2.2 Enhance sanctions screening tool
+- [x] 2.2 Enhance sanctions screening tool
   - Extend `src/acc_llamaindex/domain/tools/sanctions_tool.py` with OFAC CSL API integration
   - Implement fuzzy matching for entity names and addresses
   - Add support for multiple sanctions lists (OFAC, BIS, State)
   - Implement confidence scoring for sanctions matches
   - _Requirements: 1.2, 2.2, 5.1_
 
-- [ ] 2.3 Enhance refusals monitoring tool
+- [x] 2.3 Enhance refusals monitoring tool
   - Extend `src/acc_llamaindex/domain/tools/refusals_tool.py` with FDA/FSIS API integration
   - Add trend analysis for refusal patterns by country and product
   - Implement risk scoring based on historical refusal data
   - Add support for multiple regulatory agencies (FDA, FSIS, APHIS)
   - _Requirements: 1.2, 2.2, 5.1_
 
-- [ ] 2.4 Enhance rulings search tool
+- [x] 2.4 Enhance rulings search tool
   - Extend `src/acc_llamaindex/domain/tools/rulings_tool.py` with CBP CROSS API integration
   - Add semantic search for ruling precedents and classifications
   - Implement relevance scoring for ruling applicability

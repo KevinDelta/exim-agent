@@ -132,11 +132,11 @@ class ComplianceEvent(BaseModel):
         description="ISO 8601 timestamp of resolution"
     )
     created_at: str = Field(
-        default_factory=lambda: datetime.utcnow().isoformat() + "Z",
+        default_factory=lambda: datetime.now().isoformat() + "Z",
         description="ISO 8601 timestamp of event creation"
     )
     updated_at: str = Field(
-        default_factory=lambda: datetime.utcnow().isoformat() + "Z",
+        default_factory=lambda: datetime.now().isoformat() + "Z",
         description="ISO 8601 timestamp of last update"
     )
     
@@ -151,19 +151,19 @@ class ComplianceEvent(BaseModel):
         """Mark event as acknowledged."""
         self.status = AlertStatus.ACKNOWLEDGED
         self.acknowledged_by = user_id
-        self.acknowledged_at = datetime.utcnow().isoformat() + "Z"
-        self.updated_at = datetime.utcnow().isoformat() + "Z"
+        self.acknowledged_at = datetime.now().isoformat() + "Z"
+        self.updated_at = datetime.now().isoformat() + "Z"
     
     def dismiss(self) -> None:
         """Mark event as dismissed."""
         self.status = AlertStatus.DISMISSED
-        self.updated_at = datetime.utcnow().isoformat() + "Z"
+        self.updated_at = datetime.now().isoformat() + "Z"
     
     def resolve(self) -> None:
         """Mark event as resolved."""
         self.status = AlertStatus.RESOLVED
-        self.resolved_at = datetime.utcnow().isoformat() + "Z"
-        self.updated_at = datetime.utcnow().isoformat() + "Z"
+        self.resolved_at = datetime.now().isoformat() + "Z"
+        self.updated_at = datetime.now().isoformat() + "Z"
     
     model_config = ConfigDict(
         json_schema_extra={
