@@ -1,102 +1,408 @@
 """Base tool for compliance data sources."""
 
+import asyncio
+import time
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Callable
 from datetime import datetime, timedelta
+from enum import Enum
 import httpx
 from loguru import logger
+from pydantic import BaseModel, Field
+
+
+class CircuitBreakerState(str, Enum):
+    """Circuit breaker states."""
+    CLOSED = "closed"      # Normal operation
+    OPEN = "open"          # Failing, reject requests
+    HALF_OPEN = "half_open"  # Testing if service recovered
+
+
+class CircuitBreaker:
+    """Circuit breaker implementation for external API calls."""
+    
+    def __init__(
+        self,
+        failure_threshold: int = 5,
+        recovery_timeout: int = 60,
+        expected_exception: type = Exception
+    ):
+        """
+        Initialize circuit breaker.
+        
+        Args:
+            failure_threshold: Number of failures before opening circuit
+            recovery_timeout: Seconds to wait before trying again
+            expected_exception: Exception type that triggers circuit breaker
+        """
+        self.failure_threshold = failure_threshold
+        self.recovery_timeout = recovery_timeout
+        self.expected_exception = expected_exception
+        
+        self.failure_count = 0
+        self.last_failure_time = None
+        self.state = CircuitBreakerState.CLOSED
+    
+    def call(self, func: Callable, *args, **kwargs):
+        """Execute function with circuit breaker protection."""
+        if self.state == CircuitBreakerState.OPEN:
+            if self._should_attempt_reset():
+                self.state = CircuitBreakerState.HALF_OPEN
+            else:
+                raise Exception(f"Circuit breaker is OPEN. Service unavailable.")
+        
+        try:
+            result = func(*args, **kwargs)
+            self._on_success()
+            return result
+        except self.expected_exception as e:
+            self._on_failure()
+            raise e
+    
+    def _should_attempt_reset(self) -> bool:
+        """Check if enough time has passed to attempt reset."""
+        return (
+            self.last_failure_time and
+            time.time() - self.last_failure_time >= self.recovery_timeout
+        )
+    
+    def _on_success(self):
+        """Handle successful call."""
+        self.failure_count = 0
+        self.state = CircuitBreakerState.CLOSED
+    
+    def _on_failure(self):
+        """Handle failed call."""
+        self.failure_count += 1
+        self.last_failure_time = time.time()
+        
+        if self.failure_count >= self.failure_threshold:
+            self.state = CircuitBreakerState.OPEN
+
+
+class RetryConfig(BaseModel):
+    """Configuration for retry logic."""
+    
+    max_attempts: int = Field(
+        default=3,
+        description="Maximum number of retry attempts",
+        ge=1,
+        le=10
+    )
+    base_delay: float = Field(
+        default=1.0,
+        description="Base delay between retries in seconds",
+        ge=0.1,
+        le=60.0
+    )
+    max_delay: float = Field(
+        default=30.0,
+        description="Maximum delay between retries in seconds",
+        ge=1.0,
+        le=300.0
+    )
+    exponential_backoff: bool = Field(
+        default=True,
+        description="Use exponential backoff for retry delays"
+    )
+    jitter: bool = Field(
+        default=True,
+        description="Add random jitter to retry delays"
+    )
+
+
+class ToolResponse(BaseModel):
+    """Standardized tool response format."""
+    
+    success: bool = Field(
+        ...,
+        description="Whether the tool execution was successful"
+    )
+    data: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Tool result data"
+    )
+    error: Optional[str] = Field(
+        default=None,
+        description="Error message if execution failed"
+    )
+    error_type: Optional[str] = Field(
+        default=None,
+        description="Type of error that occurred"
+    )
+    cached: bool = Field(
+        default=False,
+        description="Whether result was served from cache"
+    )
+    execution_time_ms: int = Field(
+        default=0,
+        description="Execution time in milliseconds"
+    )
+    retry_count: int = Field(
+        default=0,
+        description="Number of retries performed"
+    )
+    circuit_breaker_state: str = Field(
+        default="closed",
+        description="Current circuit breaker state"
+    )
+    timestamp: str = Field(
+        default_factory=lambda: datetime.utcnow().isoformat() + "Z",
+        description="ISO 8601 timestamp of execution"
+    )
 
 
 class ComplianceTool(ABC):
-    """Base class for compliance tools with caching and error handling."""
+    """Base class for compliance tools with caching, circuit breaker, and retry logic."""
     
-    def __init__(self, cache_ttl_seconds: int = 86400):
+    def __init__(
+        self,
+        cache_ttl_seconds: int = 86400,
+        retry_config: Optional[RetryConfig] = None,
+        circuit_breaker_config: Optional[Dict[str, Any]] = None
+    ):
         """
         Initialize compliance tool.
         
         Args:
             cache_ttl_seconds: Time-to-live for cache in seconds (default: 24 hours)
+            retry_config: Retry configuration
+            circuit_breaker_config: Circuit breaker configuration
         """
         self.cache_ttl_seconds = cache_ttl_seconds
-        self._cache: Dict[str, tuple[datetime, Any]] = {}
-        self.client = httpx.Client(timeout=30.0)
+        self._cache: Dict[str, tuple[datetime, ToolResponse]] = {}
+        
+        # HTTP client with reasonable defaults
+        self.client = httpx.Client(
+            timeout=30.0,
+            limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),
+            headers={"User-Agent": "ComplianceIntelligencePlatform/1.0"}
+        )
+        
+        # Retry configuration
+        self.retry_config = retry_config or RetryConfig()
+        
+        # Circuit breaker
+        cb_config = circuit_breaker_config or {}
+        self.circuit_breaker = CircuitBreaker(
+            failure_threshold=cb_config.get("failure_threshold", 5),
+            recovery_timeout=cb_config.get("recovery_timeout", 60),
+            expected_exception=httpx.HTTPError
+        )
+        
+        # Rate limiting
+        self._last_request_time = 0
+        self._min_request_interval = 0.1  # 100ms between requests
     
     def _get_cache_key(self, **kwargs) -> str:
         """Generate cache key from kwargs."""
-        return "_".join(f"{k}={v}" for k, v in sorted(kwargs.items()))
+        # Sort kwargs for consistent cache keys
+        sorted_items = sorted(kwargs.items())
+        return f"{self.__class__.__name__}:" + "_".join(f"{k}={v}" for k, v in sorted_items)
     
-    def _get_from_cache(self, cache_key: str) -> Optional[Any]:
+    def _get_from_cache(self, cache_key: str) -> Optional[ToolResponse]:
         """Get value from cache if not expired."""
         if cache_key in self._cache:
-            timestamp, value = self._cache[cache_key]
+            timestamp, response = self._cache[cache_key]
             if datetime.utcnow() - timestamp < timedelta(seconds=self.cache_ttl_seconds):
                 logger.debug(f"Cache hit for {cache_key}")
-                return value
+                # Mark as cached and return
+                cached_response = response.model_copy()
+                cached_response.cached = True
+                return cached_response
             else:
                 # Cache expired, remove it
                 del self._cache[cache_key]
+                logger.debug(f"Cache expired for {cache_key}")
         return None
     
-    def _set_cache(self, cache_key: str, value: Any):
-        """Set value in cache with current timestamp."""
-        self._cache[cache_key] = (datetime.utcnow(), value)
+    def _set_cache(self, cache_key: str, response: ToolResponse):
+        """Set response in cache with current timestamp."""
+        self._cache[cache_key] = (datetime.utcnow(), response)
         logger.debug(f"Cached result for {cache_key}")
+    
+    def _rate_limit(self):
+        """Apply rate limiting between requests."""
+        current_time = time.time()
+        time_since_last = current_time - self._last_request_time
+        
+        if time_since_last < self._min_request_interval:
+            sleep_time = self._min_request_interval - time_since_last
+            logger.debug(f"Rate limiting: sleeping {sleep_time:.3f}s")
+            time.sleep(sleep_time)
+        
+        self._last_request_time = time.time()
+    
+    def _retry_with_backoff(self, func: Callable, *args, **kwargs) -> Any:
+        """Execute function with retry logic and exponential backoff."""
+        import random
+        
+        last_exception = None
+        
+        for attempt in range(self.retry_config.max_attempts):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                last_exception = e
+                
+                if attempt == self.retry_config.max_attempts - 1:
+                    # Last attempt, re-raise the exception
+                    raise e
+                
+                # Calculate delay with exponential backoff
+                if self.retry_config.exponential_backoff:
+                    delay = self.retry_config.base_delay * (2 ** attempt)
+                else:
+                    delay = self.retry_config.base_delay
+                
+                # Apply max delay limit
+                delay = min(delay, self.retry_config.max_delay)
+                
+                # Add jitter if enabled
+                if self.retry_config.jitter:
+                    delay *= (0.5 + random.random() * 0.5)  # 50-100% of calculated delay
+                
+                logger.warning(
+                    f"Attempt {attempt + 1}/{self.retry_config.max_attempts} failed: {e}. "
+                    f"Retrying in {delay:.2f}s"
+                )
+                time.sleep(delay)
+        
+        # This should never be reached, but just in case
+        raise last_exception
     
     @abstractmethod
     def _run_impl(self, **kwargs) -> Dict[str, Any]:
         """Implementation of tool logic. Must be overridden by subclasses."""
         pass
     
-    def run(self, **kwargs) -> Dict[str, Any]:
+    def run(self, **kwargs) -> ToolResponse:
         """
-        Run the tool with caching and error handling.
+        Run the tool with caching, circuit breaker, and retry logic.
         
         Returns:
-            Dict with 'success', 'data', and optional 'error' keys
+            ToolResponse with execution details
         """
+        start_time = time.time()
         cache_key = self._get_cache_key(**kwargs)
+        retry_count = 0
         
         # Check cache first
         cached_result = self._get_from_cache(cache_key)
         if cached_result is not None:
-                # Mark the result as cached before returning
-                cached_result = dict(cached_result)
-                cached_result["cached"] = True
-                return cached_result
+            return cached_result
+        
+        def execute_with_protection():
+            nonlocal retry_count
+            
+            # Apply rate limiting
+            self._rate_limit()
+            
+            # Execute with circuit breaker protection
+            return self.circuit_breaker.call(self._run_impl, **kwargs)
         
         try:
-            result = self._run_impl(**kwargs)
-            response = {
-                "success": True,
-                "data": result,
-                "cached": False,
-                "timestamp": datetime.utcnow().isoformat() + "Z"
-            }
+            # Execute with retry logic
+            result = self._retry_with_backoff(execute_with_protection)
+            
+            execution_time_ms = int((time.time() - start_time) * 1000)
+            
+            response = ToolResponse(
+                success=True,
+                data=result,
+                cached=False,
+                execution_time_ms=execution_time_ms,
+                retry_count=retry_count,
+                circuit_breaker_state=self.circuit_breaker.state.value
+            )
+            
+            # Cache successful responses
             self._set_cache(cache_key, response)
             return response
         
         except httpx.HTTPError as e:
             logger.error(f"{self.__class__.__name__} HTTP error: {e}")
-            return {
-                "success": False,
-                "error": f"HTTP error: {str(e)}",
-                "error_type": "http_error"
-            }
+            execution_time_ms = int((time.time() - start_time) * 1000)
+            
+            return ToolResponse(
+                success=False,
+                error=f"HTTP error: {str(e)}",
+                error_type="http_error",
+                execution_time_ms=execution_time_ms,
+                retry_count=retry_count,
+                circuit_breaker_state=self.circuit_breaker.state.value
+            )
         
         except Exception as e:
             logger.error(f"{self.__class__.__name__} error: {e}")
-            return {
-                "success": False,
-                "error": str(e),
-                "error_type": "unknown"
-            }
+            execution_time_ms = int((time.time() - start_time) * 1000)
+            
+            return ToolResponse(
+                success=False,
+                error=str(e),
+                error_type="unknown",
+                execution_time_ms=execution_time_ms,
+                retry_count=retry_count,
+                circuit_breaker_state=self.circuit_breaker.state.value
+            )
     
     def clear_cache(self):
         """Clear all cached results."""
+        cache_size = len(self._cache)
         self._cache.clear()
-        logger.info(f"Cleared cache for {self.__class__.__name__}")
+        logger.info(f"Cleared {cache_size} cached results for {self.__class__.__name__}")
+    
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """Get cache statistics."""
+        total_entries = len(self._cache)
+        expired_entries = 0
+        current_time = datetime.utcnow()
+        
+        for timestamp, _ in self._cache.values():
+            if current_time - timestamp >= timedelta(seconds=self.cache_ttl_seconds):
+                expired_entries += 1
+        
+        return {
+            "total_entries": total_entries,
+            "expired_entries": expired_entries,
+            "valid_entries": total_entries - expired_entries,
+            "cache_ttl_seconds": self.cache_ttl_seconds
+        }
+    
+    def get_circuit_breaker_stats(self) -> Dict[str, Any]:
+        """Get circuit breaker statistics."""
+        return {
+            "state": self.circuit_breaker.state.value,
+            "failure_count": self.circuit_breaker.failure_count,
+            "failure_threshold": self.circuit_breaker.failure_threshold,
+            "last_failure_time": self.circuit_breaker.last_failure_time,
+            "recovery_timeout": self.circuit_breaker.recovery_timeout
+        }
+    
+    def reset_circuit_breaker(self):
+        """Reset circuit breaker to closed state."""
+        self.circuit_breaker.failure_count = 0
+        self.circuit_breaker.last_failure_time = None
+        self.circuit_breaker.state = CircuitBreakerState.CLOSED
+        logger.info(f"Reset circuit breaker for {self.__class__.__name__}")
+    
+    def validate_response_schema(self, data: Dict[str, Any]) -> bool:
+        """
+        Validate response data schema. Override in subclasses for specific validation.
+        
+        Args:
+            data: Response data to validate
+            
+        Returns:
+            True if valid, False otherwise
+        """
+        # Basic validation - ensure data is a dictionary
+        return isinstance(data, dict)
     
     def __del__(self):
         """Clean up HTTP client."""
         if hasattr(self, 'client'):
-            self.client.close()
+            try:
+                self.client.close()
+            except Exception:
+                pass  # Ignore cleanup errors

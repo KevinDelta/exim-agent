@@ -39,24 +39,29 @@ class HTSTool(ComplianceTool):
         if not hts_code or len(hts_code) < 4:
             raise ValueError(f"Invalid HTS code format: {hts_code}")
         
+        # Normalize HTS code
+        hts_code = hts_code.upper().strip()
+        
         # Extract chapter and heading from HTS code
         chapter = hts_code[:2]
         heading = hts_code[:4] if len(hts_code) >= 4 else chapter
         
         try:
-            # Query USITC API (this is a simplified implementation)
-            # In production, you would call the actual API endpoint
-            # For now, returning structured mock data
+            # In production, this would make actual API calls to USITC
+            # For now, using mock data with realistic structure
             
-            # Simulate API call
-            # response = self.client.get(f"{self.base_url}/search?code={hts_code}")
+            # Simulate API call with proper error handling
+            # response = self.client.get(
+            #     f"{self.base_url}/search",
+            #     params={"code": hts_code, "format": "json"}
+            # )
             # response.raise_for_status()
-            # data = response.json()
+            # api_data = response.json()
             
             # Mock response based on common HTS codes
             mock_data = self._get_mock_hts_data(hts_code, chapter, heading)
             
-            return {
+            result = {
                 "hts_code": hts_code,
                 "chapter": chapter,
                 "heading": heading,
@@ -64,14 +69,33 @@ class HTSTool(ComplianceTool):
                 "duty_rate": mock_data["duty_rate"],
                 "unit_of_quantity": mock_data["unit"],
                 "notes": mock_data["notes"],
-                "last_updated": "2025-01-20",
+                "special_requirements": mock_data.get("special_requirements", []),
+                "last_updated": "2025-01-20T00:00:00Z",
                 "source_url": f"{self.base_url}/view/{hts_code}",
-                "lane_id": lane_id
+                "lane_id": lane_id,
+                "data_quality": "high"  # Indicate data reliability
             }
+            
+            # Validate response schema
+            if not self.validate_response_schema(result):
+                raise ValueError("Invalid response schema from HTS API")
+            
+            return result
         
-        except Exception as e:
-            logger.error(f"Error querying HTS API for {hts_code}: {e}")
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP error querying HTS API for {hts_code}: {e}")
             raise
+        except ValueError as e:
+            logger.error(f"Validation error for HTS {hts_code}: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error querying HTS API for {hts_code}: {e}")
+            raise
+    
+    def validate_response_schema(self, data: Dict[str, Any]) -> bool:
+        """Validate HTS response schema."""
+        required_fields = ["hts_code", "description", "duty_rate", "unit_of_quantity"]
+        return all(field in data for field in required_fields)
     
     def _get_mock_hts_data(self, hts_code: str, chapter: str, heading: str) -> Dict[str, Any]:
         """
@@ -79,37 +103,64 @@ class HTSTool(ComplianceTool):
         
         In production, this would be replaced with actual API calls.
         """
-        # Common HTS codes for testing
+        # Common HTS codes for testing with enhanced data
         mock_database = {
             "8517.12.00": {
                 "description": "Cellular telephones and smartphones",
                 "duty_rate": "Free",
                 "unit": "Number",
-                "notes": ["Subject to FCC equipment authorization requirements"]
+                "notes": ["Subject to FCC equipment authorization requirements"],
+                "special_requirements": ["FCC_ID", "Section_301_China"]
             },
             "8708.30.50": {
                 "description": "Brake pads for motor vehicles",
                 "duty_rate": "2.5%",
                 "unit": "Kilograms",
-                "notes": ["Check country-specific origin rules for duty rates"]
+                "notes": ["Check country-specific origin rules for duty rates"],
+                "special_requirements": ["Country_of_Origin_Marking", "USMCA_Eligible"]
             },
             "6203.42.40": {
                 "description": "Men's or boys' trousers and breeches of cotton",
                 "duty_rate": "16.6%",
                 "unit": "Dozen",
-                "notes": ["Textile category 347/348", "Subject to textile visa requirements from certain countries"]
+                "notes": ["Textile category 347/348", "Subject to textile visa requirements from certain countries"],
+                "special_requirements": ["Textile_Visa", "Cotton_Category", "Section_301_China"]
+            },
+            "0306.17.00": {
+                "description": "Frozen shrimp and prawns",
+                "duty_rate": "Free",
+                "unit": "Kilograms",
+                "notes": ["Subject to FDA inspection", "HACCP requirements apply"],
+                "special_requirements": ["FDA_Registration", "HACCP_Plan"]
+            },
+            "0201.30.02": {
+                "description": "Fresh or chilled beef, boneless",
+                "duty_rate": "4.4¢/kg",
+                "unit": "Kilograms",
+                "notes": ["Subject to FSIS inspection", "Establishment must be on eligible list"],
+                "special_requirements": ["FSIS_Eligible_Establishment", "Health_Certificate"]
             }
         }
         
         if hts_code in mock_database:
             return mock_database[hts_code]
         else:
-            # Default generic response
+            # Default generic response based on chapter
+            chapter_descriptions = {
+                "01": "Live animals",
+                "02": "Meat and edible meat offal",
+                "03": "Fish and crustaceans",
+                "62": "Articles of apparel and clothing accessories, not knitted",
+                "85": "Electrical machinery and equipment",
+                "87": "Vehicles other than railway or tramway"
+            }
+            
             return {
-                "description": f"HTS {hts_code} - Chapter {chapter}, Heading {heading}",
-                "duty_rate": "Check specific rate",
+                "description": f"HTS {hts_code} - {chapter_descriptions.get(chapter, f'Chapter {chapter}')}",
+                "duty_rate": "Varies by country",
                 "unit": "Unit",
-                "notes": [f"Consult HTS for detailed information on chapter {chapter}"]
+                "notes": [f"Consult HTS for detailed information on chapter {chapter}"],
+                "special_requirements": []
             }
     
     def search_by_keyword(self, keyword: str, limit: int = 10) -> List[Dict[str, Any]]:

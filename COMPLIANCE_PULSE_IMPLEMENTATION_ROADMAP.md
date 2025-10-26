@@ -46,6 +46,7 @@
 ---
 
 ### Day 3: HTS Tool Implementation
+
 **Branch:** `feature/hts-tool`
 
 **Tasks:**

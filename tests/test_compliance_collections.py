@@ -25,13 +25,14 @@ def initialized_collections():
 def test_collections_initialization(initialized_collections):
     """Test that all collections are initialized."""
     assert initialized_collections._initialized is True
-    assert len(initialized_collections._collections) == 4
+    assert len(initialized_collections._collections) == 5
     
     # Verify all expected collections exist
     assert compliance_collections.HTS_NOTES in initialized_collections._collections
     assert compliance_collections.RULINGS in initialized_collections._collections
     assert compliance_collections.REFUSALS in initialized_collections._collections
     assert compliance_collections.POLICY in initialized_collections._collections
+    assert compliance_collections.EVENTS in initialized_collections._collections
 
 
 def test_get_collection(initialized_collections):
@@ -146,12 +147,110 @@ def test_get_stats(initialized_collections):
     assert compliance_collections.RULINGS in stats
     assert compliance_collections.REFUSALS in stats
     assert compliance_collections.POLICY in stats
+    assert compliance_collections.EVENTS in stats
     
     # Each collection should have a count
     for collection_name, collection_stats in stats.items():
         if "count" in collection_stats:
             assert collection_stats["count"] >= 0
             assert collection_stats["status"] == "active"
+
+
+def test_search_events(initialized_collections):
+    """Test searching compliance events collection."""
+    results = initialized_collections.search_events(
+        query="sanctions alert",
+        limit=5
+    )
+    
+    assert isinstance(results, list)
+    if len(results) > 0:
+        assert "content" in results[0]
+        assert "metadata" in results[0]
+        assert "score" in results[0]
+        assert "relevance" in results[0]
+
+
+def test_search_events_with_filters(initialized_collections):
+    """Test searching events with multiple filters."""
+    results = initialized_collections.search_events(
+        query="alert",
+        client_id="client_ABC",
+        event_type="SANCTIONS",
+        risk_level="warn",
+        limit=3
+    )
+    
+    assert isinstance(results, list)
+    # Filtered search should work
+    for result in results:
+        assert "metadata" in result
+
+
+def test_add_compliance_event(initialized_collections):
+    """Test adding a new compliance event."""
+    success = initialized_collections.add_compliance_event(
+        event_id="test_event_001",
+        client_id="test_client",
+        sku_id="TEST-SKU-001",
+        lane_id="TEST-LANE-001",
+        event_type="HTS",
+        risk_level="info",
+        title="Test Event",
+        summary="This is a test compliance event",
+        metadata={"test": True}
+    )
+    
+    assert success is True
+    
+    # Verify the event was added by searching for it
+    results = initialized_collections.search_events(
+        query="test compliance event",
+        client_id="test_client",
+        limit=1
+    )
+    
+    assert len(results) >= 1
+    found_event = results[0]
+    assert found_event["metadata"]["event_id"] == "test_event_001"
+    assert found_event["metadata"]["client_id"] == "test_client"
+    assert found_event["metadata"]["event_type"] == "HTS"
+
+
+def test_multi_collection_search(initialized_collections):
+    """Test searching across multiple collections."""
+    results = initialized_collections.search_multi_collection(
+        query="cellular phone",
+        limit_per_collection=2,
+        min_relevance=0.0
+    )
+    
+    assert isinstance(results, dict)
+    assert compliance_collections.HTS_NOTES in results
+    assert compliance_collections.RULINGS in results
+    assert compliance_collections.EVENTS in results
+    
+    # Each collection should return a list
+    for collection_name, collection_results in results.items():
+        assert isinstance(collection_results, list)
+
+
+def test_get_collection_health(initialized_collections):
+    """Test getting collection health status."""
+    health = initialized_collections.get_collection_health()
+    
+    assert isinstance(health, dict)
+    assert "status" in health
+    assert "collections" in health
+    assert "total_documents" in health
+    assert "last_checked" in health
+    
+    # Should have health info for all collections
+    assert compliance_collections.HTS_NOTES in health["collections"]
+    assert compliance_collections.RULINGS in health["collections"]
+    assert compliance_collections.REFUSALS in health["collections"]
+    assert compliance_collections.POLICY in health["collections"]
+    assert compliance_collections.EVENTS in health["collections"]
 
 
 def test_seeded_data_count(initialized_collections):
@@ -163,3 +262,4 @@ def test_seeded_data_count(initialized_collections):
     assert stats[compliance_collections.RULINGS]["count"] >= 3
     assert stats[compliance_collections.REFUSALS]["count"] >= 3
     assert stats[compliance_collections.POLICY]["count"] >= 3
+    assert stats[compliance_collections.EVENTS]["count"] >= 3

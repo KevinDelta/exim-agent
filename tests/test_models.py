@@ -35,7 +35,7 @@ def test_client_profile_creation():
     client = ClientProfile(
         id="client_ABC",
         name="ABC Imports",
-        contact={"email": "ops@abcimports.com"},
+        contact_email="ops@abcimports.com",
         lanes=[
             LaneRef(
                 lane_id="CNSHA-USLAX-ocean",
@@ -60,13 +60,17 @@ def test_client_profile_creation():
 
 def test_compliance_event_creation():
     """Test ComplianceEvent model creation."""
+    from acc_llamaindex.domain.compliance.enums import ComplianceArea
+    
     event = ComplianceEvent(
         id="evt_001",
         client_id="client_ABC",
         sku_id="SKU-123",
         lane_id="CNSHA-USLAX-ocean",
         type=EventType.SANCTIONS,
+        compliance_area=ComplianceArea.SANCTIONS_SCREENING,
         risk_level=RiskLevel.WARN,
+        title="New OFAC Sanctions Alert",
         summary_md="New entity added to OFAC list",
         evidence=[
             Evidence(
