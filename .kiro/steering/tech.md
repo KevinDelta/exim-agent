@@ -44,7 +44,7 @@
 uv sync
 
 # Start development server
-fastapi dev src/acc_llamaindex/infrastructure/api/main.py
+fastapi dev src/exim_agent/infrastructure/api/main.py
 
 # Run tests
 pytest

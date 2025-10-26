@@ -7,21 +7,21 @@
   - _Requirements: 1.1, 2.1, 3.1, 4.1_
 
 - [x] 1.1 Extend compliance domain models
-  - Enhance existing `ComplianceEvent`, `Tile`, and `SnapshotResponse` models in `src/acc_llamaindex/domain/compliance/compliance_event.py`
+  - Enhance existing `ComplianceEvent`, `Tile`, and `SnapshotResponse` models in `src/exim_agent/domain/compliance/compliance_event.py`
   - Add `ClientProfile`, `SkuRef`, `LaneRef` models to support multi-SKU monitoring
   - Implement `CompliancePreferences` model for client-specific settings
   - Add comprehensive validation rules and business logic constraints
   - _Requirements: 1.1, 3.1, 7.1_
 
 - [x] 1.2 Implement enhanced base tool infrastructure
-  - Extend `src/acc_llamaindex/domain/tools/base_tool.py` with circuit breaker pattern
+  - Extend `src/exim_agent/domain/tools/base_tool.py` with circuit breaker pattern
   - Add retry logic, rate limiting, and error handling for external API calls
   - Implement caching mechanism for tool responses to improve performance
   - Add tool response validation and schema enforcement
   - _Requirements: 2.2, 5.2, 6.1_
 
 - [x] 1.3 Enhance ChromaDB compliance collections
-  - Extend `src/acc_llamaindex/infrastructure/db/compliance_collections.py` with additional collections
+  - Extend `src/exim_agent/infrastructure/db/compliance_collections.py` with additional collections
   - Add `COMPLIANCE_EVENTS` collection for historical event storage
   - Implement advanced metadata filtering and semantic search capabilities
   - Add collection management utilities for data lifecycle management
@@ -40,28 +40,28 @@
   - _Requirements: 1.2, 2.2, 5.1, 5.2_
 
 - [x] 2.1 Enhance HTS tool implementation
-  - Extend `src/acc_llamaindex/domain/tools/hts_tool.py` with real USITC API integration
+  - Extend `src/exim_agent/domain/tools/hts_tool.py` with real USITC API integration
   - Add comprehensive HTS code validation and normalization
   - Implement duty rate calculation and special requirements detection
   - Add support for FTA preferential rates and origin rules
   - _Requirements: 1.2, 2.2, 5.1_
 
 - [x] 2.2 Enhance sanctions screening tool
-  - Extend `src/acc_llamaindex/domain/tools/sanctions_tool.py` with OFAC CSL API integration
+  - Extend `src/exim_agent/domain/tools/sanctions_tool.py` with OFAC CSL API integration
   - Implement fuzzy matching for entity names and addresses
   - Add support for multiple sanctions lists (OFAC, BIS, State)
   - Implement confidence scoring for sanctions matches
   - _Requirements: 1.2, 2.2, 5.1_
 
 - [x] 2.3 Enhance refusals monitoring tool
-  - Extend `src/acc_llamaindex/domain/tools/refusals_tool.py` with FDA/FSIS API integration
+  - Extend `src/exim_agent/domain/tools/refusals_tool.py` with FDA/FSIS API integration
   - Add trend analysis for refusal patterns by country and product
   - Implement risk scoring based on historical refusal data
   - Add support for multiple regulatory agencies (FDA, FSIS, APHIS)
   - _Requirements: 1.2, 2.2, 5.1_
 
 - [x] 2.4 Enhance rulings search tool
-  - Extend `src/acc_llamaindex/domain/tools/rulings_tool.py` with CBP CROSS API integration
+  - Extend `src/exim_agent/domain/tools/rulings_tool.py` with CBP CROSS API integration
   - Add semantic search for ruling precedents and classifications
   - Implement relevance scoring for ruling applicability
   - Add support for binding ruling requests and status tracking
@@ -80,7 +80,7 @@
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
 - [x] 3.1 Enhance compliance LangGraph implementation
-  - Extend `src/acc_llamaindex/application/compliance_service/compliance_graph.py` with advanced reasoning nodes
+  - Extend `src/exim_agent/application/compliance_service/compliance_graph.py` with advanced reasoning nodes
   - Add parallel tool execution node for improved performance
   - Implement context fusion node that combines tool results with RAG documents
   - Add confidence scoring and uncertainty handling in reasoning
@@ -94,7 +94,7 @@
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
 - [x] 3.3 Enhance compliance service orchestration
-  - Extend `src/acc_llamaindex/application/compliance_service/service.py` with advanced capabilities
+  - Extend `src/exim_agent/application/compliance_service/service.py` with advanced capabilities
   - Add multi-SKU snapshot generation for portfolio monitoring
   - Implement intelligent alert prioritization and routing
   - Add support for custom compliance rules and thresholds
@@ -113,7 +113,7 @@
   - _Requirements: 3.1, 3.2, 3.3, 7.1, 7.2_
 
 - [ ] 4.1 Implement client profile management
-  - Create `src/acc_llamaindex/application/client_service/service.py` for client operations
+  - Create `src/exim_agent/application/client_service/service.py` for client operations
   - Integrate with mem0 for persistent client profile storage
   - Add CRUD operations for client profiles, SKUs, and lanes
   - Implement client preference management and validation
@@ -146,7 +146,7 @@
   - _Requirements: 1.1, 1.2, 1.3, 6.1, 6.2, 6.3, 6.4, 6.5_
 
 - [ ] 5.1 Implement core compliance API endpoints
-  - Create `src/acc_llamaindex/infrastructure/api/routes/compliance_routes.py` with snapshot and ask endpoints
+  - Create `src/exim_agent/infrastructure/api/routes/compliance_routes.py` with snapshot and ask endpoints
   - Add `/snapshot/{client_id}/{sku_id}/{lane_id}` endpoint for compliance snapshots
   - Add `/ask` endpoint for natural language compliance queries
   - Add `/monitor` endpoints for SKU/lane monitoring management
@@ -187,7 +187,7 @@
   - _Requirements: 1.4, 1.5, 3.4, 6.2, 7.3_
 
 - [ ] 6.1 Implement alert generation system
-  - Create `src/acc_llamaindex/application/alert_service/service.py` for alert management
+  - Create `src/exim_agent/application/alert_service/service.py` for alert management
   - Add intelligent alert prioritization based on risk levels and client preferences
   - Implement alert deduplication and consolidation logic
   - Add support for custom alert rules and thresholds per client
@@ -220,7 +220,7 @@
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
 - [ ] 7.1 Implement compliance data ingestion pipeline
-  - Extend `src/acc_llamaindex/application/zenml_pipelines/ingestion_pipeline.py` for compliance data
+  - Extend `src/exim_agent/application/zenml_pipelines/ingestion_pipeline.py` for compliance data
   - Add steps for fetching data from HTS, OFAC, FDA, and CBP APIs
   - Implement data normalization and validation steps
   - Add change detection and delta processing capabilities

@@ -126,7 +126,7 @@ Template domain models are in `templates/domain_models/`:
 2. **client_profile.py** - ClientProfile, LaneRef, SkuRef models
 3. **compliance_event.py** - ComplianceEvent, Tile, SnapshotResponse models
 
-**To use:** Copy these to `src/acc_llamaindex/domain/compliance/`
+**To use:** Copy these to `src/exim_agent/domain/compliance/`
 
 ---
 
@@ -139,17 +139,17 @@ Template domain models are in `templates/domain_models/`:
 git checkout -b feature/compliance-domain-models
 
 # 2. Create directories
-mkdir -p src/acc_llamaindex/domain/compliance
-mkdir -p src/acc_llamaindex/domain/tools
-mkdir -p src/acc_llamaindex/application/compliance_service
+mkdir -p src/exim_agent/domain/compliance
+mkdir -p src/exim_agent/domain/tools
+mkdir -p src/exim_agent/application/compliance_service
 
 # 3. Copy templates
-cp templates/domain_models/*.py src/acc_llamaindex/domain/compliance/
+cp templates/domain_models/*.py src/exim_agent/domain/compliance/
 
 # 4. Add __init__.py files
-touch src/acc_llamaindex/domain/compliance/__init__.py
-touch src/acc_llamaindex/domain/tools/__init__.py
-touch src/acc_llamaindex/application/compliance_service/__init__.py
+touch src/exim_agent/domain/compliance/__init__.py
+touch src/exim_agent/domain/tools/__init__.py
+touch src/exim_agent/application/compliance_service/__init__.py
 
 # 5. Install new dependencies
 # Add to pyproject.toml:

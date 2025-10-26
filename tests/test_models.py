@@ -1,8 +1,8 @@
 import pytest
 from datetime import datetime
-from acc_llamaindex.domain.compliance.client_profile import ClientProfile, LaneRef, SkuRef
-from acc_llamaindex.domain.compliance.compliance_event import ComplianceEvent, Tile, Evidence
-from acc_llamaindex.domain.compliance.enums import EventType, RiskLevel, TileStatus
+from exim_agent.domain.compliance.client_profile import ClientProfile, LaneRef, SkuRef
+from exim_agent.domain.compliance.compliance_event import ComplianceEvent, Tile, Evidence
+from exim_agent.domain.compliance.enums import EventType, RiskLevel, TileStatus
 
 
 def test_lane_ref_creation():
@@ -60,7 +60,7 @@ def test_client_profile_creation():
 
 def test_compliance_event_creation():
     """Test ComplianceEvent model creation."""
-    from acc_llamaindex.domain.compliance.enums import ComplianceArea
+    from exim_agent.domain.compliance.enums import ComplianceArea
     
     event = ComplianceEvent(
         id="evt_001",

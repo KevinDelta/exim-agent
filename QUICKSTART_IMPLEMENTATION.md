@@ -46,19 +46,19 @@ Run these commands from project root:
 
 ```bash
 # Create compliance domain directory
-mkdir -p src/acc_llamaindex/domain/compliance
-touch src/acc_llamaindex/domain/compliance/__init__.py
+mkdir -p src/exim_agent/domain/compliance
+touch src/exim_agent/domain/compliance/__init__.py
 
 # Create tools directory
-mkdir -p src/acc_llamaindex/domain/tools
-touch src/acc_llamaindex/domain/tools/__init__.py
+mkdir -p src/exim_agent/domain/tools
+touch src/exim_agent/domain/tools/__init__.py
 
 # Create compliance service
-mkdir -p src/acc_llamaindex/application/compliance_service
-touch src/acc_llamaindex/application/compliance_service/__init__.py
+mkdir -p src/exim_agent/application/compliance_service
+touch src/exim_agent/application/compliance_service/__init__.py
 
 # Create compliance API routes
-mkdir -p src/acc_llamaindex/infrastructure/api/routes
+mkdir -p src/exim_agent/infrastructure/api/routes
 # (routes directory may already exist)
 
 # Create compliance DB helpers
@@ -69,15 +69,15 @@ mkdir -p src/acc_llamaindex/infrastructure/api/routes
 
 ## Step 4: Implement Domain Models (Day 1)
 
-### File 1: `src/acc_llamaindex/domain/compliance/enums.py`
+### File 1: `src/exim_agent/domain/compliance/enums.py`
 
 See template in `templates/enums.py` (created below)
 
-### File 2: `src/acc_llamaindex/domain/compliance/client_profile.py`
+### File 2: `src/exim_agent/domain/compliance/client_profile.py`
 
 See template in `templates/client_profile.py` (created below)
 
-### File 3: `src/acc_llamaindex/domain/compliance/compliance_event.py`
+### File 3: `src/exim_agent/domain/compliance/compliance_event.py`
 
 See template in `templates/compliance_event.py` (created below)
 
@@ -90,9 +90,9 @@ Create test file: `tests/domain/compliance/test_models.py`
 ```python
 import pytest
 from datetime import datetime
-from acc_llamaindex.domain.compliance.client_profile import ClientProfile, LaneRef, SkuRef
-from acc_llamaindex.domain.compliance.compliance_event import ComplianceEvent, Tile, Evidence
-from acc_llamaindex.domain.compliance.enums import EventType, RiskLevel, TileStatus
+from exim_agent.domain.compliance.client_profile import ClientProfile, LaneRef, SkuRef
+from exim_agent.domain.compliance.compliance_event import ComplianceEvent, Tile, Evidence
+from exim_agent.domain.compliance.enums import EventType, RiskLevel, TileStatus
 
 
 def test_lane_ref_creation():
@@ -216,7 +216,7 @@ See `COMPLIANCE_PULSE_IMPLEMENTATION_ROADMAP.md` for detailed daily tasks.
 pytest
 
 # Run with coverage
-pytest --cov=src/acc_llamaindex/domain/compliance
+pytest --cov=src/exim_agent/domain/compliance
 
 # Run linting
 ruff check src/
@@ -225,7 +225,7 @@ ruff check src/
 ruff format src/
 
 # Start API (to verify nothing broke)
-fastapi dev src/acc_llamaindex/infrastructure/api/main.py
+fastapi dev src/exim_agent/infrastructure/api/main.py
 ```
 
 ---
@@ -290,7 +290,7 @@ Templates are being created in:
 - `templates/domain_models/client_profile.py`
 - `templates/domain_models/compliance_event.py`
 
-Copy these to `src/acc_llamaindex/domain/compliance/` to get started.
+Copy these to `src/exim_agent/domain/compliance/` to get started.
 
 ---
 
@@ -298,7 +298,7 @@ Copy these to `src/acc_llamaindex/domain/compliance/` to get started.
 
 1. Check `COMPLIANCE_PULSE_INTEGRATION_PLAN.md` for architecture details
 2. Check `COMPLIANCE_PULSE_IMPLEMENTATION_ROADMAP.md` for task breakdown
-3. Review existing code patterns in `src/acc_llamaindex/domain/models.py`
+3. Review existing code patterns in `src/exim_agent/domain/models.py`
 
 ---
 

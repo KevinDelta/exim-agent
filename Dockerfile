@@ -21,5 +21,5 @@ ENV DOCUMENTS_PATH=/app/data/documents
 ENV CHROMA_DB_PATH=/app/data/chroma_db
 ENV MEM0_HISTORY_DB_PATH=/app/data/mem0_history.db
 
-CMD ["/app/.venv/bin/fastapi", "run", "src/acc_llamaindex/infrastructure/api/main.py", "--port", "8000", "--host", "0.0.0.0"]
+CMD ["/app/.venv/bin/fastapi", "run", "src/exim_agent/infrastructure/api/main.py", "--port", "8000", "--host", "0.0.0.0"]
 

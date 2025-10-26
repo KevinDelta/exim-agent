@@ -94,7 +94,7 @@ ZenML (ingestion)          →  Compliance Pipelines
 **New Directory Structure:**
 
 ```bash
-src/acc_llamaindex/
+src/exim_agent/
 ├── domain/
 │   ├── compliance/                  # NEW
 │   │   ├── __init__.py

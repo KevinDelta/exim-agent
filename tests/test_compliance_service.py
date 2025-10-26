@@ -1,7 +1,7 @@
 """Tests for compliance service."""
 
 import pytest
-from acc_llamaindex.application.compliance_service import compliance_service
+from exim_agent.application.compliance_service import compliance_service
 
 
 def test_compliance_service_initialization():

@@ -1,8 +1,8 @@
 """Tests for compliance ChromaDB collections."""
 
 import pytest
-from acc_llamaindex.infrastructure.db.chroma_client import chroma_client
-from acc_llamaindex.infrastructure.db.compliance_collections import compliance_collections
+from exim_agent.infrastructure.db.chroma_client import chroma_client
+from exim_agent.infrastructure.db.compliance_collections import compliance_collections
 
 
 @pytest.fixture(scope="module")

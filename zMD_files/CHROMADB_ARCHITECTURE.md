@@ -50,7 +50,7 @@ class ChromaDBClient:
 
 ```python
 def initialize(self):
-    from acc_llamaindex.infrastructure.db.chroma_client import chroma_client
+    from exim_agent.infrastructure.db.chroma_client import chroma_client
     
     # Get shared ChromaDB client
     shared_client = chroma_client.get_client()

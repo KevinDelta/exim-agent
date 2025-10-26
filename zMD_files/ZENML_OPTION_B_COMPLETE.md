@@ -23,11 +23,11 @@ Successfully implemented **Option B: Simplify to Mem0-Only** architecture. The Z
 
 ```python
 # Before (BROKEN)
-from acc_llamaindex.application.zenml_pipelines.distillation_pipeline import (...)
-from acc_llamaindex.application.zenml_pipelines.promotion_pipeline import (...)
+from exim_agent.application.zenml_pipelines.distillation_pipeline import (...)
+from exim_agent.application.zenml_pipelines.promotion_pipeline import (...)
 
 # After (WORKING)
-from acc_llamaindex.application.zenml_pipelines.memory_analytics_pipeline import (
+from exim_agent.application.zenml_pipelines.memory_analytics_pipeline import (
     memory_analytics_pipeline,
 )
 ```
@@ -40,7 +40,7 @@ from acc_llamaindex.application.zenml_pipelines.memory_analytics_pipeline import
 
 - `ZENML_QUICKSTART.md` - Updated to show 2 pipelines
 - `ZENML_IMPLEMENTATION_STATUS.md` - Corrected status and examples
-- `src/acc_llamaindex/application/zenml_pipelines/README.md` - Removed non-existent pipeline references
+- `src/exim_agent/application/zenml_pipelines/README.md` - Removed non-existent pipeline references
 
 **Result**: ✅ Documentation now accurate
 
@@ -86,7 +86,7 @@ from acc_llamaindex.application.zenml_pipelines.memory_analytics_pipeline import
 ### Import Tests ✅
 
 ```bash
-$ uv run python -c "from acc_llamaindex.application.zenml_pipelines import run_ingestion_pipeline, memory_analytics_pipeline; print('✅ Imports successful')"
+$ uv run python -c "from exim_agent.application.zenml_pipelines import run_ingestion_pipeline, memory_analytics_pipeline; print('✅ Imports successful')"
 
 ✅ Imports successful
 ```
@@ -94,7 +94,7 @@ $ uv run python -c "from acc_llamaindex.application.zenml_pipelines import run_i
 ### API Integration ✅
 
 ```bash
-$ uv run python -c "from acc_llamaindex.infrastructure.api.main import ZENML_PIPELINES_AVAILABLE; print(f'ZenML available: {ZENML_PIPELINES_AVAILABLE}')"
+$ uv run python -c "from exim_agent.infrastructure.api.main import ZENML_PIPELINES_AVAILABLE; print(f'ZenML available: {ZENML_PIPELINES_AVAILABLE}')"
 
 ZenML available: True
 ```
@@ -115,7 +115,7 @@ Active stack: 'default' (repository)
 ### Created/Updated
 
 ```bash
-src/acc_llamaindex/application/zenml_pipelines/
+src/exim_agent/application/zenml_pipelines/
 ├── __init__.py                    ✅ Fixed imports
 ├── README.md                      ✅ Updated to reflect 2 pipelines
 ├── ingestion_pipeline.py          ✅ Existing (no changes)
@@ -142,7 +142,7 @@ Documentation/
 ### Python
 
 ```python
-from acc_llamaindex.application.zenml_pipelines import (
+from exim_agent.application.zenml_pipelines import (
     run_ingestion_pipeline,
     memory_analytics_pipeline
 )
@@ -158,7 +158,7 @@ result = memory_analytics_pipeline(user_id="user-123")
 
 ```bash
 # Start API
-uv run uvicorn acc_llamaindex.infrastructure.api.main:app --reload
+uv run uvicorn exim_agent.infrastructure.api.main:app --reload
 
 # Check ZenML status
 curl http://localhost:8000/pipelines/status
@@ -213,14 +213,14 @@ uv run zenml stack describe
    ```bash
    # Test ingestion pipeline
    uv run python -c "
-   from acc_llamaindex.application.zenml_pipelines import run_ingestion_pipeline
+   from exim_agent.application.zenml_pipelines import run_ingestion_pipeline
    result = run_ingestion_pipeline('./data/documents')
    print(result)
    "
    
    # Test analytics pipeline
    uv run python -c "
-   from acc_llamaindex.application.zenml_pipelines import memory_analytics_pipeline
+   from exim_agent.application.zenml_pipelines import memory_analytics_pipeline
    result = memory_analytics_pipeline(user_id='test-user')
    print(result)
    "
@@ -289,7 +289,7 @@ uv run zenml stack describe
 
 ### Documentation
 
-- **Pipeline Guide**: `src/acc_llamaindex/application/zenml_pipelines/README.md`
+- **Pipeline Guide**: `src/exim_agent/application/zenml_pipelines/README.md`
 - **Implementation Status**: `ZENML_IMPLEMENTATION_STATUS.md`
 - **Quick Start**: `ZENML_QUICKSTART.md`
 - **This Summary**: `ZENML_OPTION_B_COMPLETE.md`

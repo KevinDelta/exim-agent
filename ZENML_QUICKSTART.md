@@ -39,7 +39,7 @@ Analyze Mem0 usage patterns and generate insights.
 ### Option 1: Via Python
 
 ```python
-from acc_llamaindex.application.zenml_pipelines import (
+from exim_agent.application.zenml_pipelines import (
     run_ingestion_pipeline,
     memory_analytics_pipeline
 )
@@ -55,7 +55,7 @@ result = memory_analytics_pipeline(user_id="user-123")
 
 ```bash
 # Start the API
-uv run uvicorn acc_llamaindex.infrastructure.api.main:app --reload
+uv run uvicorn exim_agent.infrastructure.api.main:app --reload
 
 # Check ZenML status
 curl http://localhost:8000/pipelines/status
@@ -207,7 +207,7 @@ Use the virtual environment directly:
 Check ZenML availability:
 
 ```python
-from acc_llamaindex.application.zenml_pipelines.ingestion_pipeline import ZENML_AVAILABLE
+from exim_agent.application.zenml_pipelines.ingestion_pipeline import ZENML_AVAILABLE
 print(ZENML_AVAILABLE)  # Should be True
 ```
 
@@ -218,12 +218,12 @@ print(ZENML_AVAILABLE)  # Should be True
 .venv/bin/zenml logs
 
 # API logs
-uv run uvicorn acc_llamaindex.infrastructure.api.main:app --log-level debug
+uv run uvicorn exim_agent.infrastructure.api.main:app --log-level debug
 ```
 
 ## Documentation
 
-- **Pipeline Guide**: `src/acc_llamaindex/application/zenml_pipelines/README.md`
+- **Pipeline Guide**: `src/exim_agent/application/zenml_pipelines/README.md`
 - **Implementation Status**: `ZENML_IMPLEMENTATION_STATUS.md`
 - **Integration Guide**: `ZENML_INTEGRATION_GUIDE.md`
 - **ZenML Docs**: [https://docs.zenml.io/](https://docs.zenml.io/)

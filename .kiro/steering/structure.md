@@ -5,7 +5,7 @@
 The project follows **Clean Architecture** principles with clear separation of concerns:
 
 ```
-src/acc_llamaindex/
+src/exim_agent/
 ├── domain/                    # Business logic & entities
 ├── application/               # Use cases & services  
 ├── infrastructure/            # External concerns (API, DB, LLM)

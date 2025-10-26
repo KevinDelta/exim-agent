@@ -79,7 +79,7 @@ These pipelines would duplicate Mem0's core functionality.
 ## 📁 Files Created
 
 ```bash
-src/acc_llamaindex/application/zenml_pipelines/
+src/exim_agent/application/zenml_pipelines/
 ├── __init__.py                    # Package exports
 ├── README.md                      # Pipeline documentation
 ├── ingestion_pipeline.py          # Document ingestion pipeline
@@ -91,7 +91,7 @@ src/acc_llamaindex/application/zenml_pipelines/
 
 ```toml
 pyproject.toml                                # Added ZenML + MLflow
-src/acc_llamaindex/infrastructure/api/main.py # Added pipeline endpoints
+src/exim_agent/infrastructure/api/main.py # Added pipeline endpoints
 ```
 
 ## 📊 Implementation Status
@@ -147,7 +147,7 @@ src/acc_llamaindex/infrastructure/api/main.py # Added pipeline endpoints
 ### Python Usage
 
 ```python
-from acc_llamaindex.application.zenml_pipelines import (
+from exim_agent.application.zenml_pipelines import (
     run_ingestion_pipeline,
     memory_analytics_pipeline
 )
@@ -203,7 +203,7 @@ curl http://localhost:8000/pipelines/status
 # Returns: { "zenml_available": true, "pipelines": {...} }
 
 # Test imports
-uv run python -c "from acc_llamaindex.application.zenml_pipelines import run_ingestion_pipeline, memory_analytics_pipeline; print('✅ Imports successful')"
+uv run python -c "from exim_agent.application.zenml_pipelines import run_ingestion_pipeline, memory_analytics_pipeline; print('✅ Imports successful')"
 ```
 
 ## 📈 Benefits Delivered
@@ -220,7 +220,7 @@ The implementation provides:
 
 ## 🎓 Documentation
 
-- **Pipeline Guide**: `src/acc_llamaindex/application/zenml_pipelines/README.md`
+- **Pipeline Guide**: `src/exim_agent/application/zenml_pipelines/README.md`
 - **Integration Guide**: `ZENML_INTEGRATION_GUIDE.md`
 - **This Status**: `ZENML_IMPLEMENTATION_STATUS.md`
 

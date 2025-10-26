@@ -9,7 +9,7 @@
 ## What Was Implemented
 
 ### 1. **Compliance Collections Manager** (550 lines)
-**File:** `src/acc_llamaindex/infrastructure/db/compliance_collections.py`
+**File:** `src/exim_agent/infrastructure/db/compliance_collections.py`
 
 **4 Collections Created:**
 - `compliance_hts_notes` - HTS code notes, special requirements, tariff details
@@ -24,7 +24,7 @@
 - Integration with existing ChromaDB client infrastructure
 
 ### 2. **Graph Integration** (50 lines added)
-**File:** `src/acc_llamaindex/application/compliance_service/compliance_graph.py`
+**File:** `src/exim_agent/application/compliance_service/compliance_graph.py`
 
 **New Node:**
 - `retrieve_context_node` - Retrieves relevant context from all 4 collections
@@ -91,8 +91,8 @@ pytest tests/test_models.py tests/test_compliance_tools.py tests/test_compliance
 
 ### Initialize Collections
 ```python
-from acc_llamaindex.infrastructure.db.chroma_client import chroma_client
-from acc_llamaindex.infrastructure.db.compliance_collections import compliance_collections
+from exim_agent.infrastructure.db.chroma_client import chroma_client
+from exim_agent.infrastructure.db.compliance_collections import compliance_collections
 
 # Initialize ChromaDB
 chroma_client.initialize()
@@ -131,7 +131,7 @@ policy = compliance_collections.search_policy(
 Collections are automatically queried during snapshot generation:
 
 ```python
-from acc_llamaindex.application.compliance_service import compliance_service
+from exim_agent.application.compliance_service import compliance_service
 
 compliance_service.initialize()
 result = compliance_service.snapshot("client_ABC", "SKU-123", "CNSHA-USLAX-ocean")

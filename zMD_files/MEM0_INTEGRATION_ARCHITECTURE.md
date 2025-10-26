@@ -100,7 +100,7 @@ class Config:
 ## Simplified Directory Structure
 
 ```bash
-src/acc_llamaindex/
+src/exim_agent/
 ├── application/
 │   ├── chat_service/
 │   │   ├── graph.py              # Simplified (7 → 4 nodes)
@@ -143,7 +143,7 @@ src/acc_llamaindex/
 from mem0 import Memory
 from typing import List, Dict, Any, Optional
 from loguru import logger
-from acc_llamaindex.config import config
+from exim_agent.config import config
 
 class Mem0Client:
     """Thin wrapper around Mem0 API."""
@@ -216,7 +216,7 @@ mem0_client = Mem0Client()
 
 from typing import TypedDict, List
 from langgraph.graph import StateGraph, END
-from acc_llamaindex.application.memory_service.mem0_client import mem0_client
+from exim_agent.application.memory_service.mem0_client import mem0_client
 
 class MemoryState(TypedDict):
     query: str
@@ -287,7 +287,7 @@ memory_graph = workflow.compile()
 # infrastructure/api/routes/memory_routes.py
 
 from fastapi import APIRouter
-from acc_llamaindex.application.memory_service.mem0_client import mem0_client
+from exim_agent.application.memory_service.mem0_client import mem0_client
 
 router = APIRouter(prefix="/memory", tags=["memory"])
 
@@ -331,7 +331,7 @@ async def reset_memories(user_id: str = None, session_id: str = None):
 # application/zenml_pipelines/memory_analytics_pipeline.py
 
 from zenml import pipeline, step
-from acc_llamaindex.application.memory_service.mem0_client import mem0_client
+from exim_agent.application.memory_service.mem0_client import mem0_client
 
 @step
 def fetch_memories(user_id: str):

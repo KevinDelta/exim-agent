@@ -72,7 +72,7 @@ make start-project
 
 # Or locally
 source .venv/bin/activate
-fastapi dev src/acc_llamaindex/infrastructure/api/main.py
+fastapi dev src/exim_agent/infrastructure/api/main.py
 ```
 
 ### 3. Add documents to ingest
@@ -131,7 +131,7 @@ curl -X POST http://localhost:8000/ingest-documents \
 
 ## Configuration
 
-All settings are in `src/acc_llamaindex/config.py`:
+All settings are in `src/exim_agent/config.py`:
 
 | Setting | Default | Description |
 |---------|---------|-------------|

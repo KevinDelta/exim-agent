@@ -1,5 +1,5 @@
 [project]
-name = "acc-llamaindex"
+name = "exim-agent"
 version = "0.1.0"
 description = "This is a template for creating powerful Agent APIs."
 readme = "README.md"
@@ -51,7 +51,7 @@ dev = [
 ]
 
 [project.scripts]
-acc_llamaindex = "acc_llamaindex.cli:app"
+exim_agent = "exim_agent.cli:app"
 
 [tool.ty]
 # All rules are enabled as "error" by default; no need to specify unless overriding.

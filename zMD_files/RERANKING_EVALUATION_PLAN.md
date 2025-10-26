@@ -99,7 +99,7 @@ Overall Score: 0.87 (Good!)
 ### New Components (Lean & Focused)
 
 ```bash
-src/acc_llamaindex/
+src/exim_agent/
 ├── application/
 │   ├── reranking_service/          # NEW
 │   │   ├── service.py              # Main service

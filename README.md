@@ -44,7 +44,7 @@ LANGCHAIN_PROJECT="your-project"  # Optional
 
 ```bash
 # Development mode
-fastapi dev src/acc_llamaindex/infrastructure/api/main.py
+fastapi dev src/exim_agent/infrastructure/api/main.py
 
 # Or using Docker
 make start-project
@@ -80,7 +80,7 @@ curl -X POST http://localhost:8000/chat \
 ## Project Structure
 
 ```bash
-src/acc_llamaindex/
+src/exim_agent/
 ├── application/
 │   ├── chat_service/          # RAG chat with LangChain agents
 │   └── ingest_documents_service/  # Document processing

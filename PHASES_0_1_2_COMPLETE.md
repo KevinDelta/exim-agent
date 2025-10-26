@@ -50,7 +50,7 @@ pytest tests/test_models.py tests/test_compliance_tools.py tests/test_compliance
 
 ### Try the Service
 ```python
-from acc_llamaindex.application.compliance_service import compliance_service
+from exim_agent.application.compliance_service import compliance_service
 
 compliance_service.initialize()
 result = compliance_service.snapshot("client_ABC", "SKU-123", "CNSHA-USLAX-ocean")

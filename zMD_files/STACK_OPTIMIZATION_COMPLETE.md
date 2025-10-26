@@ -146,7 +146,7 @@ Chat Service (LangGraph delegate)
 ### Before
 
 ```bash
-src/acc_llamaindex/
+src/exim_agent/
 ├── application/
 │   ├── chat_service/
 │   │   ├── service.py (180 lines - LangChain agent)
@@ -178,7 +178,7 @@ src/acc_llamaindex/
 ### After
 
 ```bash
-src/acc_llamaindex/
+src/exim_agent/
 ├── application/
 │   ├── chat_service/
 │   │   ├── service.py (102 lines - LangGraph delegate)
@@ -322,7 +322,7 @@ pytest tests/api/test_endpoints.py
 
 ```bash
 # Development
-fastapi dev src/acc_llamaindex/infrastructure/api/main.py
+fastapi dev src/exim_agent/infrastructure/api/main.py
 
 # Production
 docker-compose up
@@ -416,7 +416,7 @@ Note: Mem0 adds ~100ms latency but eliminates 2,500+ lines of maintenance burden
 
 ## Rollback Plan (if needed)
 
-Backup created at: `src/acc_llamaindex/infrastructure/api/main.py.backup`
+Backup created at: `src/exim_agent/infrastructure/api/main.py.backup`
 
 To rollback:
 

@@ -19,7 +19,7 @@
 
 ### What Was Implemented
 
-**Domain Models** (`src/acc_llamaindex/domain/compliance/`)
+**Domain Models** (`src/exim_agent/domain/compliance/`)
 
 - ✅ `enums.py` - EventType, RiskLevel, TileStatus, TransportMode
 - ✅ `client_profile.py` - ClientProfile, LaneRef, SkuRef with full validation
@@ -44,7 +44,7 @@
 
 ### What is Implemented
 
-**Base Infrastructure** (`src/acc_llamaindex/domain/tools/`)
+**Base Infrastructure** (`src/exim_agent/domain/tools/`)
 
 - ✅ `base_tool.py` - Abstract ComplianceTool with caching, error handling, retry logic
 - ✅ Tool registry pattern for dynamic loading
@@ -103,7 +103,7 @@
 
 ### What Was Implemented
 
-**LangGraph Implementation** (`src/acc_llamaindex/application/compliance_service/`)
+**LangGraph Implementation** (`src/exim_agent/application/compliance_service/`)
 
 1. **Compliance Graph** (`compliance_graph.py`)
    - ✅ ComplianceState TypedDict definition
@@ -175,7 +175,7 @@ Entry → load_context → search_hts → screen_sanctions
 ### Files Created
 
 ```bash
-src/acc_llamaindex/
+src/exim_agent/
 ├── domain/
 │   ├── compliance/
 │   │   ├── enums.py ✅
@@ -220,7 +220,7 @@ tests/
 1. **Create Compliance Domain Objects**
 
    ```python
-   from acc_llamaindex.domain.compliance import ClientProfile, SkuRef, ComplianceEvent
+   from exim_agent.domain.compliance import ClientProfile, SkuRef, ComplianceEvent
    
    client = ClientProfile(id="ABC", name="ABC Imports", ...)
    ```
@@ -228,7 +228,7 @@ tests/
 2. **Use Compliance Tools**
 
    ```python
-   from acc_llamaindex.domain.tools import HTSTool, SanctionsTool
+   from exim_agent.domain.tools import HTSTool, SanctionsTool
    
    hts = HTSTool()
    result = hts.run(hts_code="8517.12.00", lane_id="CNSHA-USLAX-ocean")
@@ -237,7 +237,7 @@ tests/
 3. **Generate Compliance Snapshots**
 
    ```python
-   from acc_llamaindex.application.compliance_service import compliance_service
+   from exim_agent.application.compliance_service import compliance_service
    
    compliance_service.initialize()
    snapshot = compliance_service.snapshot("client_ABC", "SKU-123", "CNSHA-USLAX-ocean")
@@ -454,13 +454,13 @@ uv sync
 pytest tests/ -v
 
 # Run with coverage
-pytest tests/ --cov=src/acc_llamaindex/domain/compliance --cov=src/acc_llamaindex/domain/tools --cov=src/acc_llamaindex/application/compliance_service
+pytest tests/ --cov=src/exim_agent/domain/compliance --cov=src/exim_agent/domain/tools --cov=src/exim_agent/application/compliance_service
 ```
 
 ### Try It Out
 ```python
 # In Python REPL or notebook
-from acc_llamaindex.application.compliance_service import compliance_service
+from exim_agent.application.compliance_service import compliance_service
 
 compliance_service.initialize()
 

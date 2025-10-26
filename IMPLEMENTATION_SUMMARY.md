@@ -178,15 +178,15 @@ Tool failures → partial snapshot with warnings, not complete failure.
 1. **Set up directory structure** (10 min)
 
    ```bash
-   mkdir -p src/acc_llamaindex/domain/compliance
-   mkdir -p src/acc_llamaindex/domain/tools
-   mkdir -p src/acc_llamaindex/application/compliance_service
+   mkdir -p src/exim_agent/domain/compliance
+   mkdir -p src/exim_agent/domain/tools
+   mkdir -p src/exim_agent/application/compliance_service
    ```
 
 2. **Copy template models** (5 min)
 
    ```bash
-   cp templates/domain_models/*.py src/acc_llamaindex/domain/compliance/
+   cp templates/domain_models/*.py src/exim_agent/domain/compliance/
    ```
 
 3. **Write tests** (1-2 hours)
@@ -213,7 +213,7 @@ Tool failures → partial snapshot with warnings, not complete failure.
 ## File Structure (After Phase 0)
 
 ```bash
-src/acc_llamaindex/
+src/exim_agent/
 ├── domain/
 │   ├── compliance/              # NEW
 │   │   ├── __init__.py
@@ -290,11 +290,11 @@ A: Yes, but document changes. The plan is a guide, not a rigid specification. Ad
 
 ### Existing Code Patterns
 
-- LangGraph: `src/acc_llamaindex/application/chat_service/graph.py`
-- API routes: `src/acc_llamaindex/infrastructure/api/main.py`
-- ChromaDB: `src/acc_llamaindex/infrastructure/db/chroma_client.py`
-- mem0: `src/acc_llamaindex/application/memory_service/mem0_client.py`
-- ZenML: `src/acc_llamaindex/application/zenml_pipelines/`
+- LangGraph: `src/exim_agent/application/chat_service/graph.py`
+- API routes: `src/exim_agent/infrastructure/api/main.py`
+- ChromaDB: `src/exim_agent/infrastructure/db/chroma_client.py`
+- mem0: `src/exim_agent/application/memory_service/mem0_client.py`
+- ZenML: `src/exim_agent/application/zenml_pipelines/`
 
 ### External APIs
 

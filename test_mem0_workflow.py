@@ -13,8 +13,8 @@ def test_mem0_client():
     logger.info("TEST 1: Mem0 Client Initialization")
     logger.info("=" * 60)
     
-    from acc_llamaindex.application.memory_service.mem0_client import mem0_client
-    from acc_llamaindex.config import config
+    from exim_agent.application.memory_service.mem0_client import mem0_client
+    from exim_agent.config import config
     
     # Check if enabled
     logger.info(f"Mem0 enabled in config: {config.mem0_enabled}")
@@ -34,7 +34,7 @@ def test_add_memory():
     logger.info("TEST 2: Add Memory")
     logger.info("=" * 60)
     
-    from acc_llamaindex.application.memory_service.mem0_client import mem0_client
+    from exim_agent.application.memory_service.mem0_client import mem0_client
     
     if not mem0_client.is_enabled():
         logger.warning("⚠️  Skipping - Mem0 not enabled")
@@ -66,7 +66,7 @@ def test_search_memory():
     logger.info("TEST 3: Search Memory")
     logger.info("=" * 60)
     
-    from acc_llamaindex.application.memory_service.mem0_client import mem0_client
+    from exim_agent.application.memory_service.mem0_client import mem0_client
     
     if not mem0_client.is_enabled():
         logger.warning("⚠️  Skipping - Mem0 not enabled")
@@ -110,7 +110,7 @@ def test_get_all_memories():
     logger.info("TEST 4: Get All Memories")
     logger.info("=" * 60)
     
-    from acc_llamaindex.application.memory_service.mem0_client import mem0_client
+    from exim_agent.application.memory_service.mem0_client import mem0_client
     
     if not mem0_client.is_enabled():
         logger.warning("⚠️  Skipping - Mem0 not enabled")
@@ -151,7 +151,7 @@ def test_graph_workflow():
     logger.info("TEST 5: LangGraph Workflow with Mem0")
     logger.info("=" * 60)
     
-    from acc_llamaindex.application.chat_service.graph import memory_graph
+    from exim_agent.application.chat_service.graph import memory_graph
     
     # Test query
     query = "What frameworks am I learning about?"
@@ -193,7 +193,7 @@ def test_memory_persistence():
     logger.info("TEST 6: Memory Persistence")
     logger.info("=" * 60)
     
-    from acc_llamaindex.application.memory_service.mem0_client import mem0_client
+    from exim_agent.application.memory_service.mem0_client import mem0_client
     
     if not mem0_client.is_enabled():
         logger.warning("⚠️  Skipping - Mem0 not enabled")
@@ -235,7 +235,7 @@ def cleanup_test_memories():
     logger.info("CLEANUP: Removing Test Memories")
     logger.info("=" * 60)
     
-    from acc_llamaindex.application.memory_service.mem0_client import mem0_client
+    from exim_agent.application.memory_service.mem0_client import mem0_client
     
     if not mem0_client.is_enabled():
         logger.warning("⚠️  Skipping - Mem0 not enabled")

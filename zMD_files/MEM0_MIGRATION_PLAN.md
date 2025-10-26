@@ -69,7 +69,7 @@ python -c "from mem0 import Memory; print('Mem0 installed successfully')"
 ### Testing
 ```python
 # Test Mem0 client
-from acc_llamaindex.application.memory_service.mem0_client import mem0_client
+from exim_agent.application.memory_service.mem0_client import mem0_client
 
 # Add memory
 result = mem0_client.add(
@@ -117,7 +117,7 @@ print("Found memories:", len(memories))
 
 ```python
 # Test simplified graph
-from acc_llamaindex.application.chat_service.graph import memory_graph
+from exim_agent.application.chat_service.graph import memory_graph
 
 result = memory_graph.invoke({
     "query": "What is LangChain?",
@@ -232,7 +232,7 @@ curl -X GET http://localhost:8000/memory/all?user_id=user-123
 ### Testing
 ```python
 # Test analytics pipeline
-from acc_llamaindex.application.zenml_pipelines.memory_analytics_pipeline import (
+from exim_agent.application.zenml_pipelines.memory_analytics_pipeline import (
     run_memory_analytics
 )
 

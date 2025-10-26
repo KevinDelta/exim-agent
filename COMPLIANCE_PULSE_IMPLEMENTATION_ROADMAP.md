@@ -14,7 +14,7 @@
 
 **Tasks:**
 
-- [ ] Create `src/acc_llamaindex/domain/compliance/` directory
+- [ ] Create `src/exim_agent/domain/compliance/` directory
 - [ ] Implement `enums.py`:
   - `EventType`, `RiskLevel`, `TileStatus`
 - [ ] Implement `client_profile.py`:
@@ -34,7 +34,7 @@
 
 **Tasks:**
 
-- [ ] Create `src/acc_llamaindex/domain/tools/` directory
+- [ ] Create `src/exim_agent/domain/tools/` directory
 - [ ] Create base `ComplianceTool` abstract class extending LangChain `BaseTool`
 - [ ] Add error handling and retry logic utilities
 - [ ] Create tool registry pattern for dynamic tool loading
@@ -62,7 +62,7 @@
 
 **API Example:**
 ```python
-from acc_llamaindex.domain.tools.hts_tool import HTSTool
+from exim_agent.domain.tools.hts_tool import HTSTool
 
 tool = HTSTool()
 result = tool.run(hts_code="8517.12.00", lane_id="CNSHA-USLAX-ocean")

@@ -12,7 +12,7 @@ Successfully implemented Mem0 integration as an optional alternative to the cust
 
 ### Phase 1: Configuration ✅
 
-**File**: `src/acc_llamaindex/config.py`
+**File**: `src/exim_agent/config.py`
 
 Added Mem0 configuration options:
 
@@ -29,8 +29,8 @@ Added Mem0 configuration options:
 
 **Files Created**:
 
-- `src/acc_llamaindex/application/memory_service/mem0_client.py` - Thin wrapper around Mem0 API
-- `src/acc_llamaindex/application/memory_service/memory_types.py` - Type definitions
+- `src/exim_agent/application/memory_service/mem0_client.py` - Thin wrapper around Mem0 API
+- `src/exim_agent/application/memory_service/memory_types.py` - Type definitions
 
 **Features**:
 
@@ -45,7 +45,7 @@ Added Mem0 configuration options:
 
 ### Phase 3: Simplified LangGraph ✅
 
-**File Created**: `src/acc_llamaindex/application/chat_service/graph_mem0.py`
+**File Created**: `src/exim_agent/application/chat_service/graph_mem0.py`
 
 **Architecture Change**:
 
@@ -71,7 +71,7 @@ Added Mem0 configuration options:
 
 ### Phase 4: Memory API Routes ✅
 
-**File Created**: `src/acc_llamaindex/infrastructure/api/routes/memory_routes.py`
+**File Created**: `src/exim_agent/infrastructure/api/routes/memory_routes.py`
 
 **Endpoints**:
 
@@ -86,7 +86,7 @@ Added Mem0 configuration options:
 
 **Integration**: Routes automatically included when `mem0_enabled=True`
 
-**Updated**: `src/acc_llamaindex/infrastructure/api/main.py`
+**Updated**: `src/exim_agent/infrastructure/api/main.py`
 
 - Added Mem0 routes import
 - Updated health check to include Mem0 status
@@ -124,7 +124,7 @@ uv sync
 ### 3. Start the API
 
 ```bash
-fastapi dev src/acc_llamaindex/infrastructure/api/main.py
+fastapi dev src/exim_agent/infrastructure/api/main.py
 ```
 
 ### 4. Verify Installation
@@ -186,8 +186,8 @@ curl http://localhost:8000/memory/all?user_id=user-123
 ### Use Mem0 Graph in Chat Service
 
 ```python
-from acc_llamaindex.application.chat_service.graph_mem0 import memory_graph_mem0
-from acc_llamaindex.config import config
+from exim_agent.application.chat_service.graph_mem0 import memory_graph_mem0
+from exim_agent.config import config
 
 # Only use Mem0 graph if enabled
 if config.mem0_enabled:
@@ -262,7 +262,7 @@ Test Mem0 client:
 
 ```python
 # tests/test_mem0_client.py
-from acc_llamaindex.application.memory_service.mem0_client import mem0_client
+from exim_agent.application.memory_service.mem0_client import mem0_client
 
 def test_add_memory():
     result = mem0_client.add(
@@ -287,7 +287,7 @@ Test full workflow:
 
 ```python
 # tests/integration/test_mem0_graph.py
-from acc_llamaindex.application.chat_service.graph_mem0 import memory_graph_mem0
+from exim_agent.application.chat_service.graph_mem0 import memory_graph_mem0
 
 def test_conversation_flow():
     result = memory_graph_mem0.invoke({
@@ -386,21 +386,21 @@ All custom memory code remains intact for instant rollback.
 1. `MEM0_INTEGRATION_ARCHITECTURE.md` - Architecture overview
 2. `MEM0_MIGRATION_PLAN.md` - Detailed migration plan
 3. `MEM0_IMPLEMENTATION_SUMMARY.md` - This file
-4. `src/acc_llamaindex/application/memory_service/mem0_client.py` - Mem0 wrapper
-5. `src/acc_llamaindex/application/memory_service/memory_types.py` - Type definitions
-6. `src/acc_llamaindex/application/chat_service/graph_mem0.py` - Simplified graph
-7. `src/acc_llamaindex/infrastructure/api/routes/memory_routes.py` - Memory endpoints
+4. `src/exim_agent/application/memory_service/mem0_client.py` - Mem0 wrapper
+5. `src/exim_agent/application/memory_service/memory_types.py` - Type definitions
+6. `src/exim_agent/application/chat_service/graph_mem0.py` - Simplified graph
+7. `src/exim_agent/infrastructure/api/routes/memory_routes.py` - Memory endpoints
 
 ### Modified ✅
 
-1. `src/acc_llamaindex/config.py` - Added Mem0 configuration
-2. `src/acc_llamaindex/infrastructure/api/main.py` - Added Mem0 routes integration
+1. `src/exim_agent/config.py` - Added Mem0 configuration
+2. `src/exim_agent/infrastructure/api/main.py` - Added Mem0 routes integration
 
 ### Unchanged (Custom Memory - Still Available)
 
-1. `src/acc_llamaindex/application/chat_service/graph.py` - Original 7-node graph
-2. `src/acc_llamaindex/application/chat_service/session_manager.py` - Session management
-3. `src/acc_llamaindex/application/memory_service/*.py` - All custom memory services
+1. `src/exim_agent/application/chat_service/graph.py` - Original 7-node graph
+2. `src/exim_agent/application/chat_service/session_manager.py` - Session management
+3. `src/exim_agent/application/memory_service/*.py` - All custom memory services
 
 ---
 
@@ -568,9 +568,9 @@ Initial latency increase is expected but offset by reduced complexity.
 
 ### Code References
 
-- Mem0 Client: `src/acc_llamaindex/application/memory_service/mem0_client.py`
-- Simplified Graph: `src/acc_llamaindex/application/chat_service/graph_mem0.py`
-- API Routes: `src/acc_llamaindex/infrastructure/api/routes/memory_routes.py`
+- Mem0 Client: `src/exim_agent/application/memory_service/mem0_client.py`
+- Simplified Graph: `src/exim_agent/application/chat_service/graph_mem0.py`
+- API Routes: `src/exim_agent/infrastructure/api/routes/memory_routes.py`
 
 ### Contact
 

@@ -1,7 +1,7 @@
 """Tests for compliance tools."""
 
 import pytest
-from acc_llamaindex.domain.tools import HTSTool, SanctionsTool, RefusalsTool, RulingsTool
+from exim_agent.domain.tools import HTSTool, SanctionsTool, RefusalsTool, RulingsTool
 
 
 def test_hts_tool_search():

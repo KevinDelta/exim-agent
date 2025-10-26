@@ -1,1 +1,1 @@
-"""Unit test package for acc_llamaindex."""
+"""Unit test package for exim_agent."""
