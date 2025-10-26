@@ -1,7 +1,7 @@
 [project]
 name = "exim-agent"
 version = "0.1.0"
-description = "This is a template for creating powerful Agent APIs."
+description = "AI-powered trade compliance agent with LangChain v1, LangGraph, and Mem0"
 readme = "README.md"
 classifiers = [
     # TODO
