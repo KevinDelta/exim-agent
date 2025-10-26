@@ -1,4 +1,4 @@
-"""Compliance service implementation."""
+"""Simple compliance service implementation for MVP."""
 
 from typing import Dict, Any
 from loguru import logger
@@ -7,7 +7,7 @@ from .compliance_graph import build_compliance_graph, ComplianceState
 
 
 class ComplianceService:
-    """Service for compliance operations."""
+    """Simple service for compliance operations MVP."""
     
     def __init__(self):
         """Initialize compliance service."""
@@ -23,7 +23,7 @@ class ComplianceService:
     
     def snapshot(self, client_id: str, sku_id: str, lane_id: str) -> Dict[str, Any]:
         """
-        Generate compliance snapshot for SKU + Lane.
+        Generate simple compliance snapshot for SKU + Lane.
         
         Args:
             client_id: Client identifier
@@ -31,37 +31,39 @@ class ComplianceService:
             lane_id: Lane identifier
         
         Returns:
-            SnapshotResponse dict
+            Simple SnapshotResponse dict
         """
         if self.graph is None:
             self.initialize()
         
         logger.info(f"Generating snapshot for {client_id}/{sku_id}/{lane_id}")
         
-        # Initialize state
+        # Initialize simple state
         initial_state: ComplianceState = {
             "client_id": client_id,
             "sku_id": sku_id,
             "lane_id": lane_id,
-            "client_context": {},
-            "sku_metadata": {},
+            "question": None,  # Snapshot mode
             "hts_results": {},
             "sanctions_results": {},
             "refusals_results": {},
             "rulings_results": {},
             "rag_context": [],
             "snapshot": {},
-            "citations": []
+            "citations": [],
+            "answer": None
         }
         
         # Run graph
         try:
             result = self.graph.invoke(initial_state)
+            
             return {
                 "success": True,
                 "snapshot": result.get("snapshot", {}),
-                "citations": [c.dict() if hasattr(c, 'dict') else c for c in result.get("citations", [])]
+                "citations": [c.model_dump() if hasattr(c, 'model_dump') else c for c in result.get("citations", [])]
             }
+            
         except Exception as e:
             logger.error(f"Error generating snapshot: {e}")
             return {
@@ -69,9 +71,11 @@ class ComplianceService:
                 "error": str(e)
             }
     
+
+    
     def ask(self, client_id: str, question: str, sku_id: str = None, lane_id: str = None) -> Dict[str, Any]:
         """
-        Answer compliance question with context.
+        Answer compliance question using simple RAG.
         
         Args:
             client_id: Client identifier
@@ -80,16 +84,46 @@ class ComplianceService:
             lane_id: Optional lane context
         
         Returns:
-            Answer with citations
+            Simple answer with citations
         """
-        logger.info(f"Answering question for {client_id}: {question}")
+        if self.graph is None:
+            self.initialize()
         
-        # Mock implementation - in production, use LLM with RAG
-        return {
-            "success": True,
-            "answer": "This is a mock answer. In production, this would use LLM with compliance context.",
-            "citations": []
+        logger.info(f"Processing Q&A for {client_id}: {question}")
+        
+        # Initialize state for Q&A mode
+        initial_state: ComplianceState = {
+            "client_id": client_id,
+            "sku_id": sku_id or "general",
+            "lane_id": lane_id or "general",
+            "question": question,
+            "hts_results": {},
+            "sanctions_results": {},
+            "refusals_results": {},
+            "rulings_results": {},
+            "rag_context": [],
+            "snapshot": {},
+            "citations": [],
+            "answer": None
         }
+        
+        try:
+            result = self.graph.invoke(initial_state)
+            
+            return {
+                "success": True,
+                "answer": result.get("answer", "I apologize, but I couldn't generate an answer."),
+                "citations": [c.model_dump() if hasattr(c, 'model_dump') else c for c in result.get("citations", [])],
+                "question": question
+            }
+            
+        except Exception as e:
+            logger.error(f"Error processing Q&A: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "question": question
+            }
 
 
 # Global service instance

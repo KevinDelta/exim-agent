@@ -16,8 +16,9 @@ class EventType(str, Enum):
 
 class RiskLevel(str, Enum):
     """Risk severity levels for compliance events."""
-    INFO = "info"
-    WARN = "warn"
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
     CRITICAL = "critical"
 
 
@@ -25,7 +26,7 @@ class TileStatus(str, Enum):
     """Status indicators for snapshot tiles."""
     CLEAR = "clear"
     ATTENTION = "attention"
-    ACTION = "action"
+    ACTION_REQUIRED = "action_required"
     ERROR = "error"
 
 
