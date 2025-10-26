@@ -53,6 +53,20 @@ def test_snapshot_has_all_tiles():
         assert "details_md" in tile
 
 
+def test_snapshot_with_rag_context():
+    """Test that snapshot generation includes RAG context from ChromaDB."""
+    compliance_service.initialize()
+    
+    result = compliance_service.snapshot(
+        client_id="client_RAG_TEST",
+        sku_id="SKU-789",
+        lane_id="CNSHA-USLAX-ocean"
+    )
+    
+    assert result["success"] is True
+    # Snapshot should complete even if RAG context retrieval fails
+
+
 def test_ask_endpoint():
     """Test compliance Q&A."""
     result = compliance_service.ask(

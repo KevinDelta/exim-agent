@@ -59,7 +59,10 @@ class ComplianceTool(ABC):
         # Check cache first
         cached_result = self._get_from_cache(cache_key)
         if cached_result is not None:
-            return cached_result
+                # Mark the result as cached before returning
+                cached_result = dict(cached_result)
+                cached_result["cached"] = True
+                return cached_result
         
         try:
             result = self._run_impl(**kwargs)

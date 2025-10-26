@@ -7,6 +7,7 @@ from loguru import logger
 from acc_llamaindex.domain.tools import HTSTool, SanctionsTool, RefusalsTool, RulingsTool
 from acc_llamaindex.application.memory_service.mem0_client import mem0_client
 from acc_llamaindex.infrastructure.db.chroma_client import chroma_client
+from acc_llamaindex.infrastructure.db.compliance_collections import compliance_collections
 from acc_llamaindex.domain.compliance.compliance_event import Tile, SnapshotResponse, Evidence
 from acc_llamaindex.domain.compliance.enums import TileStatus
 
@@ -125,6 +126,55 @@ def find_rulings_node(state: ComplianceState) -> ComplianceState:
     return state
 
 
+def retrieve_context_node(state: ComplianceState) -> ComplianceState:
+    """Retrieve relevant context from ChromaDB compliance collections."""
+    logger.info(f"Retrieving compliance context for SKU: {state['sku_id']}")
+    
+    # Initialize collections if not already done
+    if not compliance_collections._initialized:
+        try:
+            compliance_collections.initialize()
+        except Exception as e:
+            logger.warning(f"Failed to initialize compliance collections: {e}")
+            state["rag_context"] = []
+            return state
+    
+    rag_context = []
+    hts_code = "8517.12.00"  # Mock - in production, extract from sku_metadata
+    
+    try:
+        # Search HTS notes
+        hts_notes = compliance_collections.search_hts_notes(
+            query=f"HTS {hts_code} requirements and notes",
+            hts_code=hts_code,
+            limit=3
+        )
+        rag_context.extend([{"type": "hts_note", **note} for note in hts_notes])
+        
+        # Search rulings
+        rulings = compliance_collections.search_rulings(
+            query=f"classification ruling {hts_code}",
+            hts_code=hts_code,
+            limit=2
+        )
+        rag_context.extend([{"type": "ruling", **ruling} for ruling in rulings])
+        
+        # Search policy updates
+        policy_docs = compliance_collections.search_policy(
+            query="tariff updates trade policy",
+            limit=2
+        )
+        rag_context.extend([{"type": "policy", **doc} for doc in policy_docs])
+        
+        logger.info(f"Retrieved {len(rag_context)} context documents from ChromaDB")
+        
+    except Exception as e:
+        logger.error(f"Error retrieving context: {e}")
+    
+    state["rag_context"] = rag_context
+    return state
+
+
 def reason_compliance_node(state: ComplianceState) -> ComplianceState:
     """Synthesize snapshot from all tool results."""
     logger.info("Generating compliance snapshot")
@@ -206,6 +256,7 @@ def build_compliance_graph() -> StateGraph:
     graph.add_node("screen_sanctions", screen_sanctions_node)
     graph.add_node("fetch_refusals", fetch_refusals_node)
     graph.add_node("find_rulings", find_rulings_node)
+    graph.add_node("retrieve_context", retrieve_context_node)
     graph.add_node("reason", reason_compliance_node)
     
     # Define flow
@@ -214,7 +265,8 @@ def build_compliance_graph() -> StateGraph:
     graph.add_edge("search_hts", "screen_sanctions")
     graph.add_edge("screen_sanctions", "fetch_refusals")
     graph.add_edge("fetch_refusals", "find_rulings")
-    graph.add_edge("find_rulings", "reason")
+    graph.add_edge("find_rulings", "retrieve_context")
+    graph.add_edge("retrieve_context", "reason")
     graph.add_edge("reason", END)
     
     return graph.compile()
