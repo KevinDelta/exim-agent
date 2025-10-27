@@ -8,8 +8,10 @@ from loguru import logger
 from exim_agent.application.chat_service.service import chat_service
 from exim_agent.application.ingest_documents_service.service import ingest_service
 from exim_agent.application.evaluation_service import evaluation_service
+from exim_agent.application.compliance_service.service import compliance_service
 from exim_agent.domain.exceptions import DocumentIngestionError
 from exim_agent.infrastructure.db.chroma_client import chroma_client
+from exim_agent.infrastructure.db.compliance_collections import compliance_collections
 from exim_agent.infrastructure.llm_providers.langchain_provider import get_embeddings, get_llm
 from exim_agent.config import config
 
@@ -34,6 +36,8 @@ from .models import (
 
 # Mem0 memory routes
 from .routes.memory_routes import router as memory_router
+# Compliance routes
+from .routes.compliance_routes import router as compliance_router
 
 
 @asynccontextmanager
@@ -46,6 +50,8 @@ async def lifespan(app: FastAPI):
         get_embeddings()
         chroma_client.initialize()
         chat_service.initialize()
+        compliance_service.initialize()
+        compliance_collections.initialize()
         logger.info("Agent API startup complete")
     except Exception as e:
         logger.error(f"Failed to start Agent API: {e}")
@@ -66,6 +72,8 @@ app = FastAPI(
 
 # Include Mem0 memory routes
 app.include_router(memory_router)
+# Include Compliance routes
+app.include_router(compliance_router)
 
 
 @app.get("/")
@@ -212,6 +220,7 @@ async def health_check():
                 "mem0": config.mem0_enabled,
                 "reranking": config.enable_reranking,
                 "zenml": ZENML_PIPELINES_AVAILABLE,
+                "compliance": True,
             },
             "rag_documents": rag_stats,
         }
@@ -290,6 +299,77 @@ async def run_analytics_pipeline(user_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/pipelines/compliance-ingestion")
+async def run_compliance_ingestion_pipeline(lookback_days: int = 7):
+    """
+    Run compliance data ingestion pipeline.
+    
+    Fetches and ingests updates from:
+    - HTS codes and notes
+    - Sanctions lists
+    - Import refusals
+    - CBP rulings
+    """
+    if not ZENML_PIPELINES_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="ZenML pipelines not available."
+        )
+    
+    try:
+        logger.info(f"Running compliance ingestion pipeline (lookback: {lookback_days} days)")
+        
+        result = pipeline_runner.run_compliance_ingestion(
+            lookback_days=lookback_days
+        )
+        
+        return {
+            "success": result.get("status") == "success",
+            "result": result,
+            "pipeline_type": "zenml"
+        }
+        
+    except Exception as e:
+        logger.error(f"Compliance ingestion pipeline failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/pipelines/weekly-pulse")
+async def run_weekly_pulse_pipeline(client_id: str, period_days: int = 7):
+    """
+    Run weekly compliance pulse generation pipeline.
+    
+    Generates comprehensive weekly digest with:
+    - New requirements
+    - Risk escalations
+    - Delta analysis
+    - Action items
+    """
+    if not ZENML_PIPELINES_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="ZenML pipelines not available."
+        )
+    
+    try:
+        logger.info(f"Running weekly pulse pipeline for client: {client_id}")
+        
+        result = pipeline_runner.run_weekly_pulse(
+            client_id=client_id,
+            period_days=period_days
+        )
+        
+        return {
+            "success": result.get("status") == "success",
+            "result": result,
+            "pipeline_type": "zenml"
+        }
+        
+    except Exception as e:
+        logger.error(f"Weekly pulse pipeline failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/pipelines/status")
 async def get_pipelines_status():
     """Get status of ZenML pipelines integration."""
@@ -298,10 +378,14 @@ async def get_pipelines_status():
         "pipelines": {
             "ingestion": ZENML_PIPELINES_AVAILABLE,
             "analytics": ZENML_PIPELINES_AVAILABLE,
+            "compliance_ingestion": ZENML_PIPELINES_AVAILABLE,
+            "weekly_pulse": ZENML_PIPELINES_AVAILABLE,
         },
         "endpoints": {
             "ingest": "/pipelines/ingest",
             "analytics": "/pipelines/analytics",
+            "compliance_ingestion": "/pipelines/compliance-ingestion",
+            "weekly_pulse": "/pipelines/weekly-pulse",
         } if ZENML_PIPELINES_AVAILABLE else {}
     }
 
