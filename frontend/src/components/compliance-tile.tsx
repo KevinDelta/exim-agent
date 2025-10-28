@@ -81,58 +81,88 @@ export function ComplianceTile({ tile, title, className }: ComplianceTileProps) 
     }
   };
 
+  const tileId = `tile-${title.replace(/\s+/g, '-').toLowerCase()}`;
+  const statusId = `${tileId}-status`;
+  const descriptionId = `${tileId}-description`;
+
   return (
     <Card 
       className={cn(
-        "transition-all duration-200 hover:shadow-md",
+        "transition-all duration-200 hover:shadow-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
         statusColorClass,
         className
       )}
       role="article"
-      aria-labelledby={`tile-title-${title.replace(/\s+/g, '-').toLowerCase()}`}
+      aria-labelledby={tileId}
+      aria-describedby={`${statusId} ${descriptionId}`}
+      tabIndex={0}
     >
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+      <CardHeader className="p-3 sm:p-4 pb-2 sm:pb-3">
+        <div className="flex items-center justify-between gap-2">
           <CardTitle 
-            id={`tile-title-${title.replace(/\s+/g, '-').toLowerCase()}`}
-            className="text-sm font-medium text-foreground"
+            id={tileId}
+            className="text-responsive-sm font-medium text-foreground leading-tight"
           >
             {title}
           </CardTitle>
           <StatusIcon 
-            className={cn("h-4 w-4", statusTextClass)} 
+            className={cn("h-4 w-4 flex-shrink-0", statusTextClass)} 
             aria-hidden="true"
+            role="img"
+            aria-label={`Status indicator: ${getStatusText(tile.status)}`}
           />
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
           <Badge 
+            id={statusId}
             variant={badgeVariant}
-            className="text-xs"
-            aria-label={`Status: ${getStatusText(tile.status)}`}
+            className="text-responsive-xs self-start"
+            role="status"
+            aria-label={`Current status: ${getStatusText(tile.status)}`}
           >
             {getStatusText(tile.status)}
           </Badge>
           <time 
-            className="text-xs text-muted-foreground"
+            className="text-responsive-xs text-muted-foreground"
             dateTime={tile.last_updated}
             title={`Last updated: ${tile.last_updated}`}
+            aria-label={`Last updated: ${formatDate(tile.last_updated)}`}
           >
             {formatDate(tile.last_updated)}
           </time>
         </div>
       </CardHeader>
-      <CardContent className="pt-0">
-        <CardDescription className="text-sm leading-relaxed">
+      <CardContent className="p-3 sm:p-4 pt-0">
+        <CardDescription 
+          id={descriptionId}
+          className="text-responsive-sm leading-relaxed"
+        >
           {tile.headline}
         </CardDescription>
         {tile.details_md && (
-          <details className="mt-3">
-            <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground transition-colors">
-              View details
+          <details className="mt-2 sm:mt-3" aria-label={`Additional details for ${title}`}>
+            <summary 
+              className="cursor-pointer text-responsive-xs text-muted-foreground hover:text-foreground transition-colors touch-target focus-ring list-none"
+              aria-expanded="false"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.currentTarget.click();
+                }
+              }}
+            >
+              <span className="flex items-center gap-1">
+                <span>View details</span>
+                <span className="text-xs" aria-hidden="true">▼</span>
+              </span>
             </summary>
             <div 
-              className="mt-2 text-xs text-muted-foreground prose prose-sm max-w-none"
+              className="mt-2 text-responsive-xs text-muted-foreground prose prose-sm max-w-none"
               dangerouslySetInnerHTML={{ __html: tile.details_md }}
+              role="region"
+              aria-label={`Detailed information for ${title}`}
             />
           </details>
         )}

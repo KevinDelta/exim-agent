@@ -95,20 +95,45 @@ function DefaultErrorFallback({ error, resetError }: ErrorFallbackProps) {
       className="flex items-center justify-center min-h-screen p-4"
       role="alert"
       aria-live="assertive"
+      aria-labelledby="error-title"
+      aria-describedby="error-description"
     >
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
         <CardHeader>
-          <CardTitle className="text-destructive">Something went wrong</CardTitle>
-          <CardDescription>
+          <CardTitle 
+            id="error-title"
+            className="text-destructive"
+          >
+            Something went wrong
+          </CardTitle>
+          <CardDescription id="error-description">
             An unexpected error occurred. You can try again or refresh the page.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <details className="text-sm">
-            <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-              Error details
+          <details className="text-sm" aria-label="Technical error information">
+            <summary 
+              className="cursor-pointer text-muted-foreground hover:text-foreground focus-ring list-none"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.currentTarget.click();
+                }
+              }}
+            >
+              <span className="flex items-center gap-1">
+                <span>Error details</span>
+                <span className="text-xs" aria-hidden="true">▼</span>
+              </span>
             </summary>
-            <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-auto max-h-32">
+            <pre 
+              className="mt-2 p-2 bg-muted rounded text-xs overflow-auto max-h-32"
+              role="region"
+              aria-label="Error message and stack trace"
+              tabIndex={0}
+            >
               {error.message}
               {error.stack && (
                 <>
@@ -118,11 +143,21 @@ function DefaultErrorFallback({ error, resetError }: ErrorFallbackProps) {
               )}
             </pre>
           </details>
-          <div className="flex gap-2">
-            <Button onClick={resetError} variant="default" className="flex-1">
+          <div className="flex gap-2" role="group" aria-label="Error recovery actions">
+            <Button 
+              onClick={resetError} 
+              variant="default" 
+              className="flex-1 touch-target focus-ring"
+              aria-describedby="error-description"
+            >
               Try again
             </Button>
-            <Button onClick={handleRefresh} variant="outline" className="flex-1">
+            <Button 
+              onClick={handleRefresh} 
+              variant="outline" 
+              className="flex-1 touch-target focus-ring"
+              aria-label="Refresh the entire page"
+            >
               Refresh page
             </Button>
           </div>

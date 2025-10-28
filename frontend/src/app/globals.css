@@ -4,6 +4,15 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* Custom responsive breakpoints for mobile-first design */
+  --breakpoint-xs: 320px;
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+  
+  /* Color system */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
@@ -118,5 +127,77 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  /* Mobile-first responsive utilities */
+  .container-responsive {
+    @apply w-full px-4 mx-auto;
+    @apply sm:px-6 md:px-8;
+    @apply max-w-sm sm:max-w-2xl md:max-w-4xl lg:max-w-6xl xl:max-w-7xl;
+  }
+  
+  /* Responsive text sizing */
+  .text-responsive-xs { @apply text-xs sm:text-sm; }
+  .text-responsive-sm { @apply text-sm sm:text-base; }
+  .text-responsive-base { @apply text-base sm:text-lg; }
+  .text-responsive-lg { @apply text-lg sm:text-xl; }
+  .text-responsive-xl { @apply text-xl sm:text-2xl; }
+  .text-responsive-2xl { @apply text-2xl sm:text-3xl; }
+  .text-responsive-3xl { @apply text-3xl sm:text-4xl; }
+  .text-responsive-4xl { @apply text-4xl sm:text-5xl; }
+  
+  /* Responsive spacing */
+  .space-responsive-x { @apply space-x-2 sm:space-x-4; }
+  .space-responsive-y { @apply space-y-2 sm:space-y-4; }
+  .gap-responsive { @apply gap-2 sm:gap-4 md:gap-6; }
+  .p-responsive { @apply p-2 sm:p-4 md:p-6; }
+  .px-responsive { @apply px-2 sm:px-4 md:px-6; }
+  .py-responsive { @apply py-2 sm:py-4 md:py-6; }
+  
+  /* Touch-friendly interactive elements */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
+  }
+  
+  /* Responsive grid layouts */
+  .grid-responsive-1-2 { @apply grid-cols-1 sm:grid-cols-2; }
+  .grid-responsive-1-2-3 { @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-3; }
+  .grid-responsive-1-2-4 { @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-4; }
+  .grid-responsive-tiles { @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4; }
+  
+  /* Accessibility utilities */
+  .sr-only {
+    @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
+    clip: rect(0, 0, 0, 0);
+  }
+  
+  .focus-visible-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+  
+  .skip-link {
+    @apply absolute -top-10 left-4 z-50 bg-background border border-border px-4 py-2 rounded-md;
+    @apply focus:top-4 transition-all duration-200;
+  }
+  
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .high-contrast-border {
+      @apply border-2 border-foreground;
+    }
+  }
+  
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    .respect-motion-preference {
+      @apply transition-none animate-none;
+    }
+  }
+  
+  /* Focus indicators */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background;
   }
 }

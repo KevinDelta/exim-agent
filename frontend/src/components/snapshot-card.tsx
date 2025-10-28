@@ -35,13 +35,20 @@ interface SnapshotCardInternalProps extends Omit<SnapshotCardProps, 'snapshot'> 
 
 function SnapshotCardContent({ snapshot, loading, error, onRefresh }: SnapshotCardInternalProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [announceMessage, setAnnounceMessage] = useState<string>('');
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
+    setAnnounceMessage('Refreshing compliance data...');
     try {
       await onRefresh();
+      setAnnounceMessage('Compliance data refreshed successfully');
+    } catch {
+      setAnnounceMessage('Failed to refresh compliance data');
     } finally {
       setIsRefreshing(false);
+      // Clear announcement after a delay
+      setTimeout(() => setAnnounceMessage(''), 3000);
     }
   }, [onRefresh]);
 
@@ -78,25 +85,28 @@ function SnapshotCardContent({ snapshot, loading, error, onRefresh }: SnapshotCa
   if (loading) {
     return (
       <Card className="w-full">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Compliance Snapshot</CardTitle>
+        <CardHeader className="p-responsive">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="space-y-1">
+              <CardTitle className="text-responsive-lg">Compliance Snapshot</CardTitle>
+              <CardDescription className="text-responsive-sm">Loading compliance monitoring data...</CardDescription>
+            </div>
             <Button
               variant="outline"
               size="sm"
               onClick={handleRefresh}
               disabled={loading || isRefreshing}
               aria-label="Refresh compliance data"
+              className="touch-target self-start sm:self-auto"
             >
               <RefreshCw className={cn("h-4 w-4", (loading || isRefreshing) && "animate-spin")} />
             </Button>
           </div>
-          <CardDescription>Loading compliance monitoring data...</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <CardContent className="p-responsive pt-0">
+          <div className="grid grid-responsive-tiles gap-responsive">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-32 bg-muted animate-pulse rounded-lg" />
+              <div key={i} className="h-32 sm:h-36 bg-muted animate-pulse rounded-lg" />
             ))}
           </div>
           <div className="mt-6 flex justify-center">
@@ -115,31 +125,38 @@ function SnapshotCardContent({ snapshot, loading, error, onRefresh }: SnapshotCa
   if (error) {
     return (
       <Card className="w-full border-destructive">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-destructive">Compliance Snapshot</CardTitle>
+        <CardHeader className="p-responsive">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="space-y-1">
+              <CardTitle className="text-destructive text-responsive-lg">Compliance Snapshot</CardTitle>
+              <CardDescription className="text-responsive-sm">Failed to load compliance data</CardDescription>
+            </div>
             <Button
               variant="outline"
               size="sm"
               onClick={handleRefresh}
               disabled={loading || isRefreshing}
               aria-label="Retry loading compliance data"
+              className="touch-target self-start sm:self-auto"
             >
               <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
             </Button>
           </div>
-          <CardDescription>Failed to load compliance data</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-8 space-y-4">
-            <AlertTriangle className="h-12 w-12 text-destructive" />
-            <div className="text-center space-y-2">
-              <p className="text-sm font-medium">Unable to load compliance data</p>
-              <p className="text-xs text-muted-foreground max-w-md">
+        <CardContent className="p-responsive pt-0">
+          <div className="flex flex-col items-center justify-center py-6 sm:py-8 space-responsive-y">
+            <AlertTriangle className="h-10 w-10 sm:h-12 sm:w-12 text-destructive" />
+            <div className="text-center space-y-2 max-w-md">
+              <p className="text-responsive-sm font-medium">Unable to load compliance data</p>
+              <p className="text-responsive-xs text-muted-foreground break-words">
                 {error}
               </p>
             </div>
-            <Button onClick={handleRefresh} disabled={isRefreshing}>
+            <Button 
+              onClick={handleRefresh} 
+              disabled={isRefreshing}
+              className="touch-target"
+            >
               {isRefreshing ? (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -159,31 +176,38 @@ function SnapshotCardContent({ snapshot, loading, error, onRefresh }: SnapshotCa
   if (!snapshot || !snapshot.success || !snapshot.snapshot) {
     return (
       <Card className="w-full">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Compliance Snapshot</CardTitle>
+        <CardHeader className="p-responsive">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="space-y-1">
+              <CardTitle className="text-responsive-lg">Compliance Snapshot</CardTitle>
+              <CardDescription className="text-responsive-sm">No compliance data available</CardDescription>
+            </div>
             <Button
               variant="outline"
               size="sm"
               onClick={handleRefresh}
               disabled={loading || isRefreshing}
               aria-label="Refresh compliance data"
+              className="touch-target self-start sm:self-auto"
             >
               <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
             </Button>
           </div>
-          <CardDescription>No compliance data available</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-8 space-y-4">
-            <Clock className="h-12 w-12 text-muted-foreground" />
+        <CardContent className="p-responsive pt-0">
+          <div className="flex flex-col items-center justify-center py-6 sm:py-8 space-responsive-y">
+            <Clock className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground" />
             <div className="text-center space-y-2">
-              <p className="text-sm font-medium">No data available</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-responsive-sm font-medium">No data available</p>
+              <p className="text-responsive-xs text-muted-foreground">
                 Click refresh to load compliance monitoring data
               </p>
             </div>
-            <Button onClick={handleRefresh} disabled={isRefreshing}>
+            <Button 
+              onClick={handleRefresh} 
+              disabled={isRefreshing}
+              className="touch-target"
+            >
               {isRefreshing ? (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -211,13 +235,40 @@ function SnapshotCardContent({ snapshot, loading, error, onRefresh }: SnapshotCa
   ];
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <CardTitle>Compliance Snapshot</CardTitle>
-            <CardDescription>
-              Client: {snapshotData.client_id} • SKU: {snapshotData.sku_id} • Lane: {snapshotData.lane_id}
+    <Card 
+      className="w-full focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
+      role="region"
+      aria-labelledby="snapshot-card-title"
+      aria-describedby="snapshot-card-description"
+    >
+      {/* Screen reader announcements */}
+      <div 
+        aria-live="polite" 
+        aria-atomic="true" 
+        className="sr-only"
+        role="status"
+      >
+        {announceMessage}
+      </div>
+
+      <CardHeader className="p-responsive">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4">
+          <div className="space-y-1 min-w-0 flex-1">
+            <CardTitle 
+              id="snapshot-card-title"
+              className="text-responsive-lg"
+            >
+              Compliance Snapshot
+            </CardTitle>
+            <CardDescription 
+              id="snapshot-card-description"
+              className="text-responsive-sm break-words"
+            >
+              <span className="block sm:inline">Client: {snapshotData.client_id}</span>
+              <span className="hidden sm:inline"> • </span>
+              <span className="block sm:inline">SKU: {snapshotData.sku_id}</span>
+              <span className="hidden sm:inline"> • </span>
+              <span className="block sm:inline">Lane: {snapshotData.lane_id}</span>
             </CardDescription>
           </div>
           <CardAction>
@@ -226,73 +277,101 @@ function SnapshotCardContent({ snapshot, loading, error, onRefresh }: SnapshotCa
               size="sm"
               onClick={handleRefresh}
               disabled={loading || isRefreshing}
-              aria-label="Refresh compliance data"
+              aria-label={isRefreshing ? "Refreshing compliance data" : "Refresh compliance data"}
+              className="touch-target focus-ring"
             >
-              <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+              <RefreshCw 
+                className={cn("h-4 w-4", isRefreshing && "animate-spin")} 
+                aria-hidden="true"
+              />
+              <span className="sr-only">
+                {isRefreshing ? "Refreshing..." : "Refresh"}
+              </span>
             </Button>
           </CardAction>
         </div>
         
         {/* Risk level and metadata */}
-        <div className="flex items-center justify-between pt-2">
-          <div className="flex items-center space-x-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-2">
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Risk level and alerts">
             <Badge 
               className={cn("border", riskLevelColors[snapshotData.overall_risk_level])}
               variant="outline"
+              role="status"
+              aria-label={`Overall risk level: ${getRiskLevelText(snapshotData.overall_risk_level)}`}
             >
-              <RiskIcon className="h-3 w-3 mr-1" />
+              <RiskIcon className="h-3 w-3 mr-1" aria-hidden="true" />
               {getRiskLevelText(snapshotData.overall_risk_level)}
             </Badge>
             {snapshotData.active_alerts_count > 0 && (
-              <Badge variant="destructive">
+              <Badge 
+                variant="destructive"
+                role="alert"
+                aria-label={`${snapshotData.active_alerts_count} active alert${snapshotData.active_alerts_count !== 1 ? 's' : ''}`}
+              >
                 {snapshotData.active_alerts_count} Alert{snapshotData.active_alerts_count !== 1 ? 's' : ''}
               </Badge>
             )}
           </div>
           <time 
-            className="text-xs text-muted-foreground"
+            className="text-responsive-xs text-muted-foreground self-start sm:self-auto"
             dateTime={snapshotData.generated_at}
             title={`Generated at: ${snapshotData.generated_at}`}
+            aria-label={`Last updated: ${formatTimestamp(snapshotData.generated_at)}`}
           >
             Updated {formatTimestamp(snapshotData.generated_at)}
           </time>
         </div>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="p-responsive pt-0">
         {/* Compliance tiles grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div 
+          className="grid grid-responsive-tiles gap-responsive"
+          role="grid"
+          aria-label="Compliance monitoring tiles"
+        >
           {tileConfig.map(({ key, title }) => {
             const tile = snapshotData.tiles[key];
             if (!tile) {
               return (
-                <div key={key} className="h-32 bg-muted rounded-lg flex items-center justify-center">
-                  <span className="text-xs text-muted-foreground">No data</span>
+                <div 
+                  key={key} 
+                  className="h-32 sm:h-36 bg-muted rounded-lg flex items-center justify-center"
+                  role="gridcell"
+                  aria-label={`${title}: No data available`}
+                >
+                  <span className="text-responsive-xs text-muted-foreground">No data</span>
                 </div>
               );
             }
             return (
-              <ComplianceTile
-                key={key}
-                tile={tile}
-                title={title}
-                className="h-full"
-              />
+              <div key={key} role="gridcell">
+                <ComplianceTile
+                  tile={tile}
+                  title={title}
+                  className="h-full"
+                />
+              </div>
             );
           })}
         </div>
 
         {/* Processing time and metadata */}
-        <div className="mt-6 pt-4 border-t flex items-center justify-between text-xs text-muted-foreground">
-          <span>
+        <footer 
+          className="mt-4 sm:mt-6 pt-4 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-responsive-xs text-muted-foreground"
+          role="contentinfo"
+          aria-label="Processing metadata"
+        >
+          <span aria-label={`Processing time: ${snapshotData.processing_time_ms} milliseconds`}>
             Processed in {snapshotData.processing_time_ms}ms
           </span>
           {snapshotData.last_change_detected && (
-            <span>
+            <span aria-label={`Last change detected: ${formatTimestamp(snapshotData.last_change_detected)}`}>
               Last change: {formatTimestamp(snapshotData.last_change_detected)}
             </span>
           )}
-        </div>
+        </footer>
       </CardContent>
     </Card>
   );
