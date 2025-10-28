@@ -64,8 +64,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Agent API",
-    description="Mem0-powered Agent API with LangGraph",
+    title="exim_agent",
+    description="Mem0-powered exim Agent with LangGraph",
     docs_url="/docs",
     lifespan=lifespan,
 )
