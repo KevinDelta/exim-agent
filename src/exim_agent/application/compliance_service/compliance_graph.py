@@ -53,9 +53,9 @@ def execute_tools_node(state: ComplianceState) -> ComplianceState:
     try:
         hts_result = hts_tool.run(hts_code=hts_code, lane_id=state['lane_id'])
         state['hts_results'] = {
-            'success': hts_result.get('success', False),
-            'data': hts_result.get('data'),
-            'error': hts_result.get('error')
+            'success': hts_result.success,
+            'data': hts_result.data,
+            'error': hts_result.error
         }
     except Exception as e:
         logger.error(f"HTS tool failed: {e}")
@@ -64,9 +64,9 @@ def execute_tools_node(state: ComplianceState) -> ComplianceState:
     try:
         sanctions_result = sanctions_tool.run(party_name=party_name, lane_id=state['lane_id'])
         state['sanctions_results'] = {
-            'success': sanctions_result.get('success', False),
-            'data': sanctions_result.get('data'),
-            'error': sanctions_result.get('error')
+            'success': sanctions_result.success,
+            'data': sanctions_result.data,
+            'error': sanctions_result.error
         }
     except Exception as e:
         logger.error(f"Sanctions tool failed: {e}")
@@ -75,9 +75,9 @@ def execute_tools_node(state: ComplianceState) -> ComplianceState:
     try:
         refusals_result = refusals_tool.run(hts_code=hts_code, lane_id=state['lane_id'])
         state['refusals_results'] = {
-            'success': refusals_result.get('success', False),
-            'data': refusals_result.get('data'),
-            'error': refusals_result.get('error')
+            'success': refusals_result.success,
+            'data': refusals_result.data,
+            'error': refusals_result.error
         }
     except Exception as e:
         logger.error(f"Refusals tool failed: {e}")
@@ -86,9 +86,9 @@ def execute_tools_node(state: ComplianceState) -> ComplianceState:
     try:
         rulings_result = rulings_tool.run(hts_code=hts_code, lane_id=state['lane_id'])
         state['rulings_results'] = {
-            'success': rulings_result.get('success', False),
-            'data': rulings_result.get('data'),
-            'error': rulings_result.get('error')
+            'success': rulings_result.success,
+            'data': rulings_result.data,
+            'error': rulings_result.error
         }
     except Exception as e:
         logger.error(f"Rulings tool failed: {e}")

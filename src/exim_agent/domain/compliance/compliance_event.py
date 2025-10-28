@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .enums import EventType, RiskLevel, TileStatus, AlertStatus, ComplianceArea
 
@@ -140,7 +140,7 @@ class ComplianceEvent(BaseModel):
         description="ISO 8601 timestamp of last update"
     )
     
-    @validator('title')
+    @field_validator('title')
     def validate_title(cls, v):
         """Ensure title is not empty."""
         if not v or not v.strip():

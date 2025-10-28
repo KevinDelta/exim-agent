@@ -110,14 +110,14 @@ class SkuRef(BaseModel):
         description="ISO 8601 timestamp of last update"
     )
     
-    @validator('hts_code')
+    @field_validator('hts_code')
     def validate_hts_code(cls, v):
         """Validate HTS code format."""
         if not v or len(v) < 4:
             raise ValueError("HTS code must be at least 4 characters")
         return v.upper()
     
-    @validator('origin_country')
+    @field_validator('origin_country')
     def validate_country_code(cls, v):
         """Validate country code format."""
         return v.upper()
@@ -272,7 +272,7 @@ class ClientProfile(BaseModel):
         description="ISO 8601 timestamp of last update"
     )
     
-    @validator('contact_email')
+    @field_validator('contact_email')
     def validate_email(cls, v):
         """Basic email validation."""
         if '@' not in v or '.' not in v:
