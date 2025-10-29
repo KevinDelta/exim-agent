@@ -137,7 +137,7 @@ def generate_snapshot_node(state: ComplianceState) -> ComplianceState:
     """Generate simple compliance snapshot."""
     logger.info("Generating compliance snapshot")
     
-    tiles = {}
+    tiles: Dict[str, Dict[str, Any]] = {}
     citations = []
     
     # HTS Tile
@@ -207,6 +207,28 @@ def generate_snapshot_node(state: ComplianceState) -> ComplianceState:
         processing_time_ms=1000,
         sources=[c.model_dump() for c in citations]
     ).model_dump()
+    
+    # Normalize tile keys and statuses for frontend expectations
+    tile_key_map = {
+        "hts": "hts_classification",
+        "sanctions": "sanctions_screening",
+        "health_safety": "refusal_history",
+        "rulings": "cbp_rulings",
+    }
+    normalized_tiles: Dict[str, Dict[str, Any]] = {}
+    for raw_key, tile in snapshot["tiles"].items():
+        normalized_key = tile_key_map.get(raw_key, raw_key)
+        normalized_tile = dict(tile)
+        status = normalized_tile.get("status")
+        if status == TileStatus.ACTION_REQUIRED.value:
+            normalized_tile["status"] = "action"
+        normalized_tiles[normalized_key] = normalized_tile
+    snapshot["tiles"] = normalized_tiles
+    
+    # Derive basic alert count from tile statuses (anything non-clear counts as alert)
+    snapshot["active_alerts_count"] = sum(
+        1 for tile in normalized_tiles.values() if tile.get("status") in {"attention", "action", "error"}
+    )
     
     state["snapshot"] = snapshot
     state["citations"] = citations
@@ -301,5 +323,4 @@ def build_compliance_graph() -> StateGraph:
     graph.add_edge("generate_snapshot", END)
     
     return graph.compile()
-
 

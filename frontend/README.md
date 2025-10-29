@@ -14,7 +14,7 @@ A modern NextJS frontend application for the Compliance Intelligence Platform, p
 
 ## Project Structure
 
-```
+```bash
 frontend/
 ├── src/
 │   ├── app/                          # App Router pages
@@ -49,29 +49,34 @@ frontend/
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - npm or yarn
 - The backend API running on `http://localhost:8000`
 
 ### Installation
 
 1. Navigate to the frontend directory:
+
 ```bash
 cd frontend
 ```
 
-2. Install dependencies:
+1. Install dependencies:
+
 ```bash
 npm install
 ```
 
-3. Copy environment variables:
+1. Copy environment variables:
+
 ```bash
 cp .env.example .env.local
 ```
 
-4. Update `.env.local` with your configuration:
+1. Update `.env.local` with your configuration:
+
 ```bash
+
 # API Backend URL
 NEXT_PUBLIC_API_URL=http://localhost:8000
 
@@ -85,6 +90,7 @@ NEXT_PUBLIC_API_TIMEOUT=10000
 ### Development
 
 Start the development server:
+
 ```bash
 npm run dev
 ```
@@ -148,7 +154,7 @@ npm run preview
 The frontend connects to the Compliance Intelligence Platform backend API:
 
 - **Base URL**: Configurable via `NEXT_PUBLIC_API_URL` environment variable
-- **Endpoints**: 
+- **Endpoints**:
   - `POST /compliance/snapshot` - Get compliance snapshot data
   - `POST /compliance/ask` - Ask compliance questions (future)
 - **Error Handling**: Automatic retry logic with exponential backoff
@@ -183,9 +189,11 @@ The frontend connects to the Compliance Intelligence Platform backend API:
 ### Core Components
 
 #### SnapshotCard
+
 Main component that displays compliance snapshot data in a card format.
 
 **Props:**
+
 ```typescript
 interface SnapshotCardProps {
   snapshot: ComplianceSnapshot | null;
@@ -196,6 +204,7 @@ interface SnapshotCardProps {
 ```
 
 **Usage:**
+
 ```tsx
 import { SnapshotCard } from '@/components/snapshot-card';
 
@@ -208,9 +217,11 @@ import { SnapshotCard } from '@/components/snapshot-card';
 ```
 
 #### ComplianceTile
+
 Individual tile component for displaying specific compliance data.
 
 **Props:**
+
 ```typescript
 interface ComplianceTileProps {
   title: string;
@@ -223,9 +234,11 @@ interface ComplianceTileProps {
 ```
 
 #### SnapshotCardContainer
+
 Container component that handles data fetching and state management.
 
 **Usage:**
+
 ```tsx
 import { SnapshotCardContainer } from '@/components/snapshot-card-container';
 
@@ -239,9 +252,11 @@ import { SnapshotCardContainer } from '@/components/snapshot-card-container';
 ### Custom Hooks
 
 #### useComplianceSnapshot
+
 Hook for fetching and managing compliance snapshot data.
 
 **Usage:**
+
 ```tsx
 import { useComplianceSnapshot } from '@/hooks/use-compliance-snapshot';
 
@@ -255,6 +270,7 @@ const { snapshot, loading, error, refetch } = useComplianceSnapshot({
 ## Development Guidelines
 
 ### Code Style
+
 - Use TypeScript strict mode with proper type definitions
 - Follow React/NextJS best practices and conventions
 - Implement proper error boundaries for graceful error handling
@@ -263,6 +279,7 @@ const { snapshot, loading, error, refetch } = useComplianceSnapshot({
 - Follow consistent naming conventions (camelCase for variables, PascalCase for components)
 
 ### Component Structure
+
 - Keep components focused and reusable
 - Use proper TypeScript interfaces for all props
 - Implement loading and error states consistently
@@ -270,7 +287,8 @@ const { snapshot, loading, error, refetch } = useComplianceSnapshot({
 - Separate concerns (presentation vs. logic)
 - Use composition over inheritance
 
-### API Integration
+### API Integrations
+
 - Use the centralized API client (`lib/api.ts`)
 - Implement proper error handling with user-friendly messages
 - Add request/response validation with TypeScript
@@ -279,6 +297,7 @@ const { snapshot, loading, error, refetch } = useComplianceSnapshot({
 - Handle loading states appropriately
 
 ### Performance Best Practices
+
 - Use React.memo for expensive components
 - Implement proper dependency arrays in useEffect
 - Avoid unnecessary re-renders
@@ -290,6 +309,7 @@ const { snapshot, loading, error, refetch } = useComplianceSnapshot({
 ### Common Issues
 
 #### API Connection Issues
+
 ```bash
 # Check if backend is running
 curl http://localhost:8000/health
@@ -299,6 +319,7 @@ echo $NEXT_PUBLIC_API_URL
 ```
 
 #### Build Issues
+
 ```bash
 # Clear Next.js cache
 npm run clean
@@ -312,6 +333,7 @@ npm run type-check
 ```
 
 #### Development Server Issues
+
 ```bash
 # Kill processes on port 3000
 lsof -ti:3000 | xargs kill -9
@@ -332,17 +354,20 @@ DEBUG=* npm run dev
 ### Production Build
 
 1. Set up production environment variables:
+
 ```bash
 cp .env.example .env.production
 # Update NEXT_PUBLIC_API_URL with production API URL
 ```
 
-2. Build the application:
+1. Build the application:
+
 ```bash
 npm run build
 ```
 
-3. Start production server:
+1. Start production server:
+
 ```bash
 npm start
 ```

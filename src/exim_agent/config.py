@@ -80,6 +80,9 @@ class Settings(BaseSettings):
         ".txt", ".pdf", ".docx", ".md", 
         ".csv", ".json", ".html", ".xml", ".epub"
     ]
+    
+    # API Configuration
+    cors_origins: list[str] = ["http://localhost:3000"]
 
 
 config = Settings()
