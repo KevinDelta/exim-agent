@@ -220,7 +220,7 @@ def generate_snapshot_node(state: ComplianceState) -> ComplianceState:
         normalized_key = tile_key_map.get(raw_key, raw_key)
         normalized_tile = dict(tile)
         status = normalized_tile.get("status")
-        if status == TileStatus.ACTION_REQUIRED.value:
+        if status == TileStatus.ACTION_REQUIRED:
             normalized_tile["status"] = "action"
         normalized_tiles[normalized_key] = normalized_tile
     snapshot["tiles"] = normalized_tiles

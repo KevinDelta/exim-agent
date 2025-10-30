@@ -1,15 +1,9 @@
-import { DemoSnapshotCard } from "@/components/snapshot-card";
+import { ContentArea } from "@/components/layout";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-background">
-      <main 
-        id="main-content" 
-        className="container-responsive py-responsive"
-        role="main"
-        aria-label="Compliance Intelligence Platform Dashboard"
-      >
-        <div className="max-w-7xl mx-auto">
+    <ContentArea>
+      <div role="main" aria-label="Compliance Intelligence Platform Dashboard">
           {/* Hero section with responsive text */}
           <header className="text-center mb-6 sm:mb-8 lg:mb-12" role="banner">
             <h1 className="text-responsive-4xl font-bold tracking-tight mb-2 sm:mb-4">
@@ -22,17 +16,6 @@ export default function Home() {
               Real-time compliance monitoring dashboard with intelligent risk assessment
             </p>
           </header>
-          
-          {/* Main Compliance Snapshot Card */}
-          <section 
-            className="mb-6 sm:mb-8 lg:mb-12"
-            aria-labelledby="compliance-snapshot-heading"
-          >
-            <h2 id="compliance-snapshot-heading" className="sr-only">
-              Current Compliance Snapshot
-            </h2>
-            <DemoSnapshotCard className="w-full" />
-          </section>
 
           {/* Additional dashboard information - responsive grid */}
           <section 
@@ -70,8 +53,7 @@ export default function Home() {
               </p>
             </article>
           </section>
-        </div>
-      </main>
-    </div>
+      </div>
+    </ContentArea>
   );
 }

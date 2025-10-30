@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { AppLayout } from "@/components/layout";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -56,7 +57,9 @@ export default function RootLayout({
         
         <ErrorBoundary>
           <div id="root" role="application" aria-label="Compliance Intelligence Platform">
-            {children}
+            <AppLayout>
+              {children}
+            </AppLayout>
           </div>
         </ErrorBoundary>
       </body>
