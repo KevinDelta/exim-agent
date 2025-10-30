@@ -116,11 +116,18 @@ class IngestDocumentsService:
             if all_splits:
                 logger.info(f"Created {len(all_splits)} text chunks from {processed_count} documents")
                 
-                # Add documents to vector store
+                # Add documents to vector store in batches to avoid provider limits
                 vector_store = chroma_client.get_vector_store()
-                vector_store.add_documents(all_splits)
+                batch_size = max(1, config.ingestion_batch_size)
+                for start_index in range(0, len(all_splits), batch_size):
+                    batch = all_splits[start_index:start_index + batch_size]
+                    vector_store.add_documents(batch)
                 
-                logger.info(f"Successfully added {len(all_splits)} chunks to vector store")
+                logger.info(
+                    "Successfully added %s chunks to vector store (batch size=%s)",
+                    len(all_splits),
+                    batch_size,
+                )
             
             # Get collection stats
             stats = chroma_client.get_collection_stats()

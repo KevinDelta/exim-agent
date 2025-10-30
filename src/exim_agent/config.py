@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     # Document Processing
     chunk_size: int = 1024
     chunk_overlap: int = 200
+    ingestion_batch_size: int = int(os.getenv("INGESTION_BATCH_SIZE", 1000))
     
     # RAG Configuration
     retrieval_k: int = 20  # Number of documents to retrieve (increased for reranking)

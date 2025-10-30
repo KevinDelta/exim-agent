@@ -200,6 +200,7 @@ The application features a comprehensive navigation system with:
 - **Accessibility**: Full WCAG 2.1 AA compliance with keyboard navigation
 
 For detailed documentation, see:
+
 - [Navigation System Guide](./NAVIGATION_SYSTEM.md) - Complete implementation guide
 - [Component Guide](./COMPONENT_GUIDE.md) - Component usage documentation
 
