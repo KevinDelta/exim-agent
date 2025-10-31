@@ -66,6 +66,7 @@ graph TB
 Create environment files for each environment:
 
 #### Backend (.env)
+
 ```bash
 # API Configuration
 API_HOST=0.0.0.0
@@ -91,7 +92,7 @@ CHROMA_COLLECTION_NAME=documents
 MEM0_ENABLED=true
 MEM0_VECTOR_STORE=chroma
 MEM0_LLM_PROVIDER=openai
-MEM0_LLM_MODEL=gpt-4o-mini
+MEM0_LLM_MODEL=gpt-5-nano
 MEM0_EMBEDDER_MODEL=text-embedding-3-small
 MEM0_HISTORY_DB_PATH=./data/mem0_history.db
 MEM0_HISTORY_LIMIT=10

@@ -2,84 +2,22 @@
 
 from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
 from loguru import logger
 
 from exim_agent.application.compliance_service.service import compliance_service
 from exim_agent.infrastructure.db.compliance_collections import ComplianceCollections
+from exim_agent.infrastructure.api.models import (
+    AskRequest,
+    AskResponse,
+    SnapshotRequest,
+    SnapshotResponse,
+    WeeklyPulseResponse,
+)
 
 router = APIRouter(prefix="/compliance", tags=["compliance"])
 
 # Initialize compliance collections
 compliance_collections = ComplianceCollections()
-
-
-# Request/Response Models
-
-class SnapshotRequest(BaseModel):
-    """Request model for compliance snapshot."""
-    client_id: str = Field(..., description="Client identifier")
-    sku_id: str = Field(..., description="SKU identifier")
-    lane_id: str = Field(..., description="Lane identifier (e.g., CNSHA-USLAX-ocean)")
-    hts_code: Optional[str] = Field(None, description="Optional HTS code override")
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "client_id": "client_ABC",
-                "sku_id": "SKU-123",
-                "lane_id": "CNSHA-USLAX-ocean",
-                "hts_code": "8517.12.00"
-            }
-        }
-
-
-class SnapshotResponse(BaseModel):
-    """Response model for compliance snapshot."""
-    success: bool
-    snapshot: Optional[Dict[str, Any]] = None
-    citations: Optional[List[Dict[str, Any]]] = None
-    error: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
-
-
-class AskRequest(BaseModel):
-    """Request model for compliance Q&A."""
-    client_id: str = Field(..., description="Client identifier")
-    question: str = Field(..., description="Natural language compliance question")
-    sku_id: Optional[str] = Field(None, description="Optional SKU context")
-    lane_id: Optional[str] = Field(None, description="Optional lane context")
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "client_id": "client_ABC",
-                "question": "What are the special requirements for importing smartphones from China?",
-                "sku_id": "SKU-123",
-                "lane_id": "CNSHA-USLAX-ocean"
-            }
-        }
-
-
-class AskResponse(BaseModel):
-    """Response model for compliance Q&A."""
-    success: bool
-    answer: Optional[str] = None
-    citations: Optional[List[Dict[str, Any]]] = None
-    question: str
-    error: Optional[str] = None
-
-
-class WeeklyPulseResponse(BaseModel):
-    """Response model for weekly compliance pulse."""
-    success: bool
-    client_id: str
-    period_start: str
-    period_end: str
-    summary: Optional[Dict[str, Any]] = None
-    changes: Optional[List[Dict[str, Any]]] = None
-    error: Optional[str] = None
 
 
 # API Endpoints

@@ -1,52 +1,17 @@
 """Memory management API routes using Mem0."""
 
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
 from loguru import logger
 
 from exim_agent.application.memory_service.mem0_client import mem0_client
+from exim_agent.infrastructure.api.models import (
+    AddMemoryRequest,
+    ResetMemoryRequest,
+    SearchMemoryRequest,
+    UpdateMemoryRequest,
+)
 
 router = APIRouter(prefix="/memory", tags=["memory"])
-
-
-# Request/Response Models
-
-class AddMemoryRequest(BaseModel):
-    """Request model for adding memory."""
-    messages: List[Dict[str, str]] = Field(
-        ...,
-        description="List of messages with 'role' and 'content' keys",
-        example=[
-            {"role": "user", "content": "What is LangChain?"},
-            {"role": "assistant", "content": "LangChain is a framework..."}
-        ]
-    )
-    user_id: Optional[str] = Field(None, description="User identifier")
-    agent_id: Optional[str] = Field(None, description="Agent identifier")
-    session_id: Optional[str] = Field(None, description="Session identifier")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
-
-
-class SearchMemoryRequest(BaseModel):
-    """Request model for searching memories."""
-    query: str = Field(..., description="Search query")
-    user_id: Optional[str] = Field(None, description="Filter by user")
-    agent_id: Optional[str] = Field(None, description="Filter by agent")
-    session_id: Optional[str] = Field(None, description="Filter by session")
-    limit: int = Field(10, ge=1, le=100, description="Maximum number of results")
-
-
-class UpdateMemoryRequest(BaseModel):
-    """Request model for updating memory."""
-    data: str = Field(..., description="New memory content")
-
-
-class ResetMemoryRequest(BaseModel):
-    """Request model for resetting memories."""
-    user_id: Optional[str] = Field(None, description="Reset for specific user")
-    agent_id: Optional[str] = Field(None, description="Reset for specific agent")
-    session_id: Optional[str] = Field(None, description="Reset for specific session")
 
 
 # Routes

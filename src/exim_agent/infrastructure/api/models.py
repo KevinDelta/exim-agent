@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -61,67 +61,104 @@ class IngestDocumentsResponse(BaseModel):
     collection_stats: Optional[dict] = None
 
 
+class AddMemoryRequest(BaseModel):
+    """Request model for adding memory."""
+    messages: List[Dict[str, str]] = Field(
+        ...,
+        description="List of messages with 'role' and 'content' keys",
+        example=[
+            {"role": "user", "content": "What is LangChain?"},
+            {"role": "assistant", "content": "LangChain is a framework..."},
+        ],
+    )
+    user_id: Optional[str] = Field(None, description="User identifier")
+    agent_id: Optional[str] = Field(None, description="Agent identifier")
+    session_id: Optional[str] = Field(None, description="Session identifier")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+
+
+class SearchMemoryRequest(BaseModel):
+    """Request model for searching memories."""
+    query: str = Field(..., description="Search query")
+    user_id: Optional[str] = Field(None, description="Filter by user")
+    agent_id: Optional[str] = Field(None, description="Filter by agent")
+    session_id: Optional[str] = Field(None, description="Filter by session")
+    limit: int = Field(10, ge=1, le=100, description="Maximum number of results")
+
+
+class UpdateMemoryRequest(BaseModel):
+    """Request model for updating memory."""
+    data: str = Field(..., description="New memory content")
+
+
 class ResetMemoryRequest(BaseModel):
-    pass
+    """Request model for resetting memories."""
+    user_id: Optional[str] = Field(None, description="Reset for specific user")
+    agent_id: Optional[str] = Field(None, description="Reset for specific agent")
+    session_id: Optional[str] = Field(None, description="Reset for specific session")
 
 
-# Memory API Models
+class SnapshotRequest(BaseModel):
+    """Request model for compliance snapshot."""
+    client_id: str = Field(..., description="Client identifier")
+    sku_id: str = Field(..., description="SKU identifier")
+    lane_id: str = Field(..., description="Lane identifier (e.g., CNSHA-USLAX-ocean)")
+    hts_code: Optional[str] = Field(None, description="Optional HTS code override")
 
-class MemoryRecallRequest(BaseModel):
-    """Request model for memory recall."""
-    query: str = Field(..., description="User query text")
-    session_id: str = Field(..., description="Session identifier")
-    intent: Optional[str] = Field(None, description="Optional intent (auto-detected if not provided)")
-    k: Optional[int] = Field(10, description="Number of results to retrieve")
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "client_id": "client_ABC",
+                "sku_id": "SKU-123",
+                "lane_id": "CNSHA-USLAX-ocean",
+                "hts_code": "8517.12.00",
+            }
+        }
+    }
 
-
-class MemoryRecallResponse(BaseModel):
-    """Response model for memory recall."""
+class SnapshotResponse(BaseModel):
+    """Response model for compliance snapshot."""
     success: bool
-    results: list[dict]
-    query_metadata: dict
+    snapshot: Optional[Dict[str, Any]] = None
+    citations: Optional[List[Dict[str, Any]]] = None
+    error: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class AskRequest(BaseModel):
+    """Request model for compliance Q&A."""
+    client_id: str = Field(..., description="Client identifier")
+    question: str = Field(..., description="Natural language compliance question")
+    sku_id: Optional[str] = Field(None, description="Optional SKU context")
+    lane_id: Optional[str] = Field(None, description="Optional lane context")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "client_id": "client_ABC",
+                "question": "What are the special requirements for importing smartphones from China?",
+                "sku_id": "SKU-123",
+                "lane_id": "CNSHA-USLAX-ocean",
+            }
+        }
+    }
+
+
+class AskResponse(BaseModel):
+    """Response model for compliance Q&A."""
+    success: bool
+    answer: Optional[str] = None
+    citations: Optional[List[Dict[str, Any]]] = None
+    question: str
     error: Optional[str] = None
 
 
-class MemoryDistillRequest(BaseModel):
-    """Request model for conversation distillation."""
-    session_id: str = Field(..., description="Session identifier")
-    force: bool = Field(False, description="Force distillation even if not at threshold")
-
-
-class MemoryDistillResponse(BaseModel):
-    """Response model for distillation."""
+class WeeklyPulseResponse(BaseModel):
+    """Response model for weekly compliance pulse."""
     success: bool
-    facts_created: int
-    duplicates_merged: int
-    error: Optional[str] = None
-
-
-class SessionInfoResponse(BaseModel):
-    """Response model for session info."""
-    success: bool
-    session_id: str
-    wm_turns: int
-    em_facts: int
-    last_distilled: Optional[str]
-    error: Optional[str] = None
-
-
-class MemoryPromoteRequest(BaseModel):
-    """Request model for manual promotion."""
-    fact_id: Optional[str] = Field(None, description="Specific fact ID to promote (optional)")
-
-
-class MemoryPromoteResponse(BaseModel):
-    """Response model for promotion."""
-    success: bool
-    promoted: int
-    found: int
-    error: Optional[str] = None
-
-
-class MetricsResponse(BaseModel):
-    """Response model for metrics."""
-    success: bool
-    metrics: dict
+    client_id: str
+    period_start: str
+    period_end: str
+    summary: Optional[Dict[str, Any]] = None
+    changes: Optional[List[Dict[str, Any]]] = None
     error: Optional[str] = None

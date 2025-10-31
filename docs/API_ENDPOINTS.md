@@ -21,6 +21,7 @@ const API_TIMEOUT = parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || '10000', 10)
 **Purpose:** Generate comprehensive compliance analysis for HTS code and trade lane
 
 **Request:**
+
 ```typescript
 interface SnapshotRequest {
   client_id: string;      // Client identifier
@@ -39,6 +40,7 @@ interface SnapshotRequest {
 ```
 
 **Response:**
+
 ```typescript
 interface SnapshotResponse {
   success: boolean;
@@ -96,6 +98,7 @@ interface SnapshotResponse {
 ```
 
 **Backend Processing:**
+
 1. **Compliance Service** initializes LangGraph
 2. **Compliance Graph** executes domain tools:
    - HTSTool (classification and duty rates)
@@ -112,6 +115,7 @@ interface SnapshotResponse {
 **Purpose:** Answer compliance questions using RAG with compliance context
 
 **Request:**
+
 ```typescript
 interface AskRequest {
   client_id: string;      // Client identifier
@@ -130,6 +134,7 @@ interface AskRequest {
 ```
 
 **Response:**
+
 ```typescript
 interface AskResponse {
   success: boolean;
@@ -165,6 +170,7 @@ interface AskResponse {
 **Purpose:** Send message to context-aware chat system with Mem0 memory
 
 **Request:**
+
 ```typescript
 interface ChatRequest {
   message: string;
@@ -188,6 +194,7 @@ interface ChatRequest {
 ```
 
 **Response:**
+
 ```typescript
 interface ChatResponse {
   response: string;
@@ -203,6 +210,7 @@ interface ChatResponse {
 ```
 
 **Backend Processing:**
+
 1. **Chat Service** receives enhanced message with compliance context
 2. **Chat Graph (LangGraph)** processes through:
    - **load_memories**: Query Mem0 for conversation history
@@ -220,6 +228,7 @@ interface ChatResponse {
 **Purpose:** Check system status and service availability
 
 **Response:**
+
 ```typescript
 interface HealthCheckResponse {
   status: 'healthy' | 'unhealthy';
@@ -261,6 +270,7 @@ interface HealthCheckResponse {
 **Purpose:** Get status of compliance data collections
 
 **Response:**
+
 ```typescript
 interface CollectionsStatusResponse {
   success: boolean;
@@ -403,6 +413,7 @@ const headers = {
 **Purpose:** Trigger compliance data ingestion pipeline
 
 **Request:**
+
 ```typescript
 {
   "lookback_days": 7  // Days to look back for updates
@@ -416,6 +427,7 @@ const headers = {
 **Purpose:** Analyze Mem0 usage patterns and optimize memory
 
 **Request:**
+
 ```typescript
 {
   "user_id": "user123"
