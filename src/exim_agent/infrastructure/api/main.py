@@ -3,6 +3,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
 from exim_agent.application.chat_service.service import chat_service
@@ -68,6 +69,15 @@ app = FastAPI(
     description="Mem0-powered exim Agent with LangGraph",
     docs_url="/docs",
     lifespan=lifespan,
+)
+
+# Allow development frontend to call the API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=config.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Include Mem0 memory routes

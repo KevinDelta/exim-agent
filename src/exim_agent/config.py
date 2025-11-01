@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     # Document Processing
     chunk_size: int = 1024
     chunk_overlap: int = 200
+    ingestion_batch_size: int = int(os.getenv("INGESTION_BATCH_SIZE", 1000))
     
     # RAG Configuration
     retrieval_k: int = 20  # Number of documents to retrieve (increased for reranking)
@@ -53,7 +54,7 @@ class Settings(BaseSettings):
     cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     
     # Evaluation Configuration
-    enable_evaluation: bool = False  # Auto-evaluate responses
+    enable_evaluation: bool = True  # Auto-evaluate responses
     evaluation_threshold: float = 0.7  # Minimum acceptable score
     
     # Mem0 Memory Configuration (ALWAYS ENABLED)
@@ -80,6 +81,9 @@ class Settings(BaseSettings):
         ".txt", ".pdf", ".docx", ".md", 
         ".csv", ".json", ".html", ".xml", ".epub"
     ]
+    
+    # API Configuration
+    cors_origins: list[str] = ["http://localhost:3000"]
 
 
 config = Settings()
