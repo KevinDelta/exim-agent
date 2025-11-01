@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     
     # Evaluation Configuration
-    enable_evaluation: bool = False  # Auto-evaluate responses
+    enable_evaluation: bool = True  # Auto-evaluate responses
     evaluation_threshold: float = 0.7  # Minimum acceptable score
     
     # Mem0 Memory Configuration (ALWAYS ENABLED)

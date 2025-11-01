@@ -7,6 +7,7 @@ This documentation covers the integrated compliance workflow that combines real-
 ## 📚 Documentation Structure
 
 ### Core Architecture
+
 - **[Backend Integration Guide](./COMPLIANCE_INTEGRATION.md)** - Complete backend service integration flow
 - **[Frontend Architecture](./FRONTEND_ARCHITECTURE.md)** - Frontend component structure and state management
 - **[API Endpoints](./API_ENDPOINTS.md)** - Detailed API documentation with examples
@@ -15,11 +16,13 @@ This documentation covers the integrated compliance workflow that combines real-
 ## 🎯 Quick Start
 
 ### For Developers
+
 1. **Backend Integration** - Start with [COMPLIANCE_INTEGRATION.md](./COMPLIANCE_INTEGRATION.md) to understand how services connect
 2. **Frontend Components** - Review [FRONTEND_ARCHITECTURE.md](./FRONTEND_ARCHITECTURE.md) for component structure
 3. **API Usage** - Check [API_ENDPOINTS.md](./API_ENDPOINTS.md) for endpoint specifications
 
 ### For DevOps
+
 1. **Deployment** - Follow [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for production setup
 2. **Monitoring** - Review health check and observability sections
 3. **Security** - Implement security recommendations from deployment guide
@@ -80,7 +83,8 @@ graph TB
 ## 🔄 Integration Flow
 
 ### 1. Compliance Analysis Flow
-```
+
+```yml
 User Input (HTS + Lane) 
   → Compliance Service
   → LangGraph Orchestration
@@ -91,7 +95,8 @@ User Input (HTS + Lane)
 ```
 
 ### 2. Context-Aware Chat Flow
-```
+
+```yml
 User Question + Compliance Context
   → Chat Service
   → LangGraph Orchestration
@@ -105,18 +110,21 @@ User Question + Compliance Context
 ## 🚀 Key Features
 
 ### Integrated Workflow
+
 - **Seamless Experience** - Single interface for compliance analysis and chat
 - **Context Sharing** - Chat understands current compliance data
 - **Progressive Enhancement** - Features appear as needed
 - **Real-time Updates** - Live compliance analysis and chat responses
 
 ### AI-Powered Intelligence
+
 - **LangGraph Orchestration** - Complex workflow management
 - **Mem0 Memory** - Intelligent conversation history
 - **Multi-LLM Support** - OpenAI, Anthropic, Groq providers
 - **RAG Integration** - Document-grounded responses
 
 ### Enterprise Ready
+
 - **Scalable Architecture** - Microservices with shared data layer
 - **MLOps Integration** - ZenML for data pipeline management
 - **Comprehensive Monitoring** - Health checks and observability
@@ -125,7 +133,9 @@ User Question + Compliance Context
 ## 📖 Detailed Documentation
 
 ### [Backend Integration Guide](./COMPLIANCE_INTEGRATION.md)
+
 Comprehensive explanation of how the frontend connects to all backend services:
+
 - **Compliance Graph Service** - HTS analysis, sanctions screening, refusal history
 - **Chat Graph Service** - Context-aware conversational AI
 - **ChromaDB Integration** - Shared vector storage for documents and memory
@@ -133,21 +143,27 @@ Comprehensive explanation of how the frontend connects to all backend services:
 - **ZenML Pipelines** - Data ingestion and model training workflows
 
 ### [Frontend Architecture](./FRONTEND_ARCHITECTURE.md)
+
 Complete frontend component structure and state management:
+
 - **Component Hierarchy** - ComplianceWorkflow orchestration
 - **State Management** - useComplianceWorkflow hook
 - **User Flow** - Step-by-step interaction patterns
 - **Performance Optimizations** - React.memo, lazy loading, error boundaries
 
 ### [API Endpoints](./API_ENDPOINTS.md)
+
 Detailed API documentation with request/response examples:
+
 - **Compliance Endpoints** - `/compliance/snapshot`, `/compliance/ask`
 - **Chat Endpoints** - `/chat` with context enhancement
 - **Utility Endpoints** - Health checks, collection status
 - **Error Handling** - Standardized error responses and retry logic
 
 ### [Deployment Guide](./DEPLOYMENT_GUIDE.md)
+
 Production deployment strategies and configurations:
+
 - **Docker Deployment** - Multi-container setup with docker-compose
 - **Cloud Deployment** - AWS, GCP, and Kubernetes configurations
 - **Monitoring & Observability** - Health checks, logging, metrics
@@ -156,7 +172,9 @@ Production deployment strategies and configurations:
 ## 🛠️ Development Workflow
 
 ### Local Development
+
 1. **Backend Setup**
+
    ```bash
    # Install dependencies
    uv sync
@@ -169,6 +187,7 @@ Production deployment strategies and configurations:
    ```
 
 2. **Frontend Setup**
+
    ```bash
    cd frontend
    npm install
@@ -176,6 +195,7 @@ Production deployment strategies and configurations:
    ```
 
 3. **Integration Testing**
+
    ```bash
    # Test compliance workflow
    curl -X POST http://localhost:8000/compliance/snapshot \
@@ -189,6 +209,7 @@ Production deployment strategies and configurations:
    ```
 
 ### Production Deployment
+
 1. **Environment Configuration** - Set up production environment variables
 2. **Container Build** - Build Docker images for backend and frontend
 3. **Service Deployment** - Deploy using docker-compose or Kubernetes
@@ -200,6 +221,7 @@ Production deployment strategies and configurations:
 ### Common Issues
 
 #### Backend Connection Issues
+
 ```bash
 # Check service health
 curl http://localhost:8000/health
@@ -212,6 +234,7 @@ curl -X POST http://localhost:8000/chat -d '{"message": "test"}'
 ```
 
 #### Frontend Integration Issues
+
 ```bash
 # Check API connectivity
 curl http://localhost:3000/api/health
@@ -223,6 +246,7 @@ echo $NEXT_PUBLIC_API_URL
 ```
 
 #### Memory/Performance Issues
+
 ```bash
 # Monitor memory usage
 docker stats
@@ -237,16 +261,19 @@ docker logs compliance-backend
 ## 📞 Support
 
 ### Documentation Issues
+
 - Create an issue in the repository for documentation improvements
 - Include specific sections that need clarification
 - Provide context about your use case
 
 ### Technical Issues
+
 - Check the troubleshooting sections in each guide
 - Review application logs for error details
 - Verify environment configuration matches examples
 
 ### Feature Requests
+
 - Describe the desired functionality
 - Explain the business use case
 - Consider integration with existing workflow

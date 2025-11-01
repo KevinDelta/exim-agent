@@ -71,17 +71,20 @@ graph TB
 **Purpose:** Main orchestrator for the integrated compliance experience
 
 **Key Features:**
+
 - **Single source of truth** for the entire compliance workflow
 - **State management** for inputs, compliance data, and chat messages
 - **Context sharing** between compliance analysis and chat responses
 - **Progressive disclosure** - chat appears after compliance data is loaded
 
 **Props:**
+
 ```typescript
 // No props - self-contained workflow
 ```
 
 **State Management:**
+
 ```typescript
 const {
   // Input state
@@ -115,12 +118,14 @@ const {
 **Purpose:** Input form for HTS code and lane information
 
 **Key Features:**
+
 - **Real-time validation** for HTS codes and trade lanes
 - **Example suggestions** to help users get started quickly
 - **Accessible form design** with proper error handling
 - **Loading states** during analysis
 
 **Props:**
+
 ```typescript
 interface ComplianceInputFormProps {
   initialHtsCode?: string;
@@ -131,6 +136,7 @@ interface ComplianceInputFormProps {
 ```
 
 **Validation Rules:**
+
 - **HTS Code:** Format `/^\d{4,10}(\.\d{2}(\.\d{2})?)?$/` (e.g., 8517.12.00)
 - **Lane ID:** Minimum 2 characters (e.g., CN-US)
 
@@ -141,11 +147,13 @@ interface ComplianceInputFormProps {
 **Purpose:** Wrapper around SnapshotCard for the compliance workflow
 
 **Key Features:**
+
 - **Reuses existing SnapshotCard** component for consistency
 - **Dynamic updates** based on user input
 - **Error handling** and retry functionality
 
 **Props:**
+
 ```typescript
 interface ComplianceSnapshotProps {
   snapshot: ComplianceSnapshotType | null;

@@ -10,6 +10,8 @@ import httpx
 from loguru import logger
 from pydantic import BaseModel, Field
 
+from ..models import ToolResponse
+
 
 class CircuitBreakerState(str, Enum):
     """Circuit breaker states."""
@@ -108,47 +110,6 @@ class RetryConfig(BaseModel):
     jitter: bool = Field(
         default=True,
         description="Add random jitter to retry delays"
-    )
-
-
-class ToolResponse(BaseModel):
-    """Standardized tool response format."""
-    
-    success: bool = Field(
-        ...,
-        description="Whether the tool execution was successful"
-    )
-    data: Optional[Dict[str, Any]] = Field(
-        default=None,
-        description="Tool result data"
-    )
-    error: Optional[str] = Field(
-        default=None,
-        description="Error message if execution failed"
-    )
-    error_type: Optional[str] = Field(
-        default=None,
-        description="Type of error that occurred"
-    )
-    cached: bool = Field(
-        default=False,
-        description="Whether result was served from cache"
-    )
-    execution_time_ms: int = Field(
-        default=0,
-        description="Execution time in milliseconds"
-    )
-    retry_count: int = Field(
-        default=0,
-        description="Number of retries performed"
-    )
-    circuit_breaker_state: str = Field(
-        default="closed",
-        description="Current circuit breaker state"
-    )
-    timestamp: str = Field(
-        default_factory=lambda: datetime.utcnow().isoformat() + "Z",
-        description="ISO 8601 timestamp of execution"
     )
 
 

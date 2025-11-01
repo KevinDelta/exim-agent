@@ -118,6 +118,7 @@ RAGAS_METRICS=["faithfulness", "answer_relevance", "context_precision"]
 ```
 
 #### Frontend (.env.local)
+
 ```bash
 # API Configuration
 NEXT_PUBLIC_API_URL=http://localhost:8000
@@ -139,6 +140,7 @@ NEXT_PUBLIC_UPLOAD_ALLOWED_TYPES=.pdf,.txt,.csv,.epub
 ### 2. Production Environment Variables
 
 #### Backend (.env.production)
+
 ```bash
 # API Configuration
 API_HOST=0.0.0.0
@@ -163,6 +165,7 @@ ZENML_SERVER_URL=https://zenml.yourdomain.com
 ```
 
 #### Frontend (.env.production)
+
 ```bash
 # API Configuration
 NEXT_PUBLIC_API_URL=https://api.yourdomain.com
@@ -397,6 +400,7 @@ http {
 ### 1. AWS Deployment
 
 #### ECS Task Definition
+
 ```json
 {
   "family": "compliance-intelligence",
@@ -450,6 +454,7 @@ http {
 ```
 
 #### CloudFormation Template
+
 ```yaml
 # cloudformation.yml
 AWSTemplateFormatVersion: '2010-09-09'
@@ -501,6 +506,7 @@ Resources:
 ### 2. Google Cloud Deployment
 
 #### Cloud Run Configuration
+
 ```yaml
 # cloud-run.yml
 apiVersion: serving.knative.dev/v1
@@ -534,6 +540,8 @@ spec:
 ```
 
 ### 3. Kubernetes Deployment
+
+#### Deployment Configuration
 
 ```yaml
 # k8s-deployment.yml

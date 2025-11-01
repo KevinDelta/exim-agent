@@ -1,6 +1,7 @@
 """Memory management API routes using Mem0."""
 
 from fastapi import APIRouter, HTTPException, status
+from typing import Optional
 from loguru import logger
 
 from exim_agent.application.memory_service.mem0_client import mem0_client

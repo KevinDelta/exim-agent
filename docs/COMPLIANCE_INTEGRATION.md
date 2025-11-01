@@ -70,6 +70,7 @@ graph TB
 ### 1. Compliance Analysis Flow
 
 #### Frontend → Backend
+
 ```typescript
 // User enters HTS code and lane
 handleInputSubmit("8517.12.00", "CN-US")
@@ -87,6 +88,7 @@ POST /compliance/snapshot
 ```
 
 #### Backend Processing
+
 ```python
 # 1. API Route Handler
 @router.post("/compliance/snapshot")
@@ -139,7 +141,8 @@ def generate_snapshot_node(state: ComplianceState):
 
 ### 2. Chat Integration Flow
 
-#### Frontend → Backend
+#### Frontend -> Backend
+
 ```typescript
 // User asks question about compliance data
 handleChatMessage("What are the risks for HTS 8517.12.00?")
@@ -164,7 +167,8 @@ POST /chat
 }
 ```
 
-#### Backend Processing
+#### Backend Processings
+
 ```python
 # 1. Chat Service
 def chat(self, message: str, conversation_history: list, user_id: str, session_id: str):
@@ -255,6 +259,7 @@ class ChromaDBClient:
 ```
 
 **Data Flow:**
+
 1. **Compliance Graph** → Queries compliance-specific collections
 2. **Chat Graph** → Queries document collection for RAG
 3. **Mem0** → Uses shared client for memory storage
@@ -330,7 +335,8 @@ def memory_analytics_pipeline(user_id: str):
 ## Complete Integration Points
 
 ### Compliance Query Flow
-```
+
+```yml
 User Input (HTS + Lane) 
   → API Route (/compliance/snapshot)
   → Compliance Service
@@ -342,7 +348,8 @@ User Input (HTS + Lane)
 ```
 
 ### Chat Query Flow
-```
+
+```yml
 User Message + Compliance Context
   → API Route (/chat)
   → Chat Service  
@@ -356,7 +363,8 @@ User Message + Compliance Context
 ```
 
 ### Data Pipeline Flow
-```
+
+```yml
 ZenML Scheduler
   → Compliance Ingestion Pipeline
   → External APIs (HTS, CBP, OFAC, etc.)
@@ -370,18 +378,21 @@ ZenML Scheduler
 ## Key Integration Benefits
 
 ### Shared Context
+
 - **Compliance data** informs chat responses
 - **Chat history** (via Mem0) provides user context
 - **ChromaDB** serves as single source of truth
 - **ZenML** keeps all data fresh and updated
 
 ### Intelligent Memory
+
 - **Mem0** remembers user's compliance queries
 - **Context-aware** responses based on previous discussions
 - **Automatic summarization** of complex compliance topics
 - **Long-term memory** for recurring compliance questions
 
 ### Scalable Architecture
+
 - **LangGraph** orchestrates complex workflows
 - **ChromaDB** handles vector similarity search
 - **ZenML** manages data pipelines and model updates
