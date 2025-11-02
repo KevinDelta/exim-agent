@@ -14,6 +14,14 @@ class Settings(BaseSettings):
     huggingface_api_key: str | None = None
     llama_cloud_api_key: str | None = None
     
+    # Supabase Configuration
+    supabase_url: str | None = None
+    supabase_anon_key: str | None = None
+    
+    # Compliance Data Source API Keys
+    csl_api_key: str | None = None  # ITA Consolidated Screening List API
+    fda_api_key: str | None = None  # FDA Import Refusals API
+    
     # LangSmith Configuration
     langsmith_workspace_id: str | None = None
     langsmith_api_key: str | None = None  

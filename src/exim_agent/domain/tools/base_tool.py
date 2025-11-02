@@ -202,12 +202,31 @@ class ComplianceTool(ABC):
         
         for attempt in range(self.retry_config.max_attempts):
             try:
-                return func(*args, **kwargs)
+                result = func(*args, **kwargs)
+                if attempt > 0:
+                    logger.info(f"{self.__class__.__name__} succeeded on attempt {attempt + 1}")
+                return result
             except Exception as e:
                 last_exception = e
                 
+                # Log error for monitoring (requirement 7.1)
+                logger.error(
+                    f"{self.__class__.__name__} attempt {attempt + 1}/{self.retry_config.max_attempts} failed: {e}",
+                    extra={
+                        "tool_name": self.__class__.__name__,
+                        "attempt": attempt + 1,
+                        "max_attempts": self.retry_config.max_attempts,
+                        "error_type": type(e).__name__,
+                        "error_message": str(e)
+                    }
+                )
+                
                 if attempt == self.retry_config.max_attempts - 1:
                     # Last attempt, re-raise the exception
+                    logger.error(
+                        f"{self.__class__.__name__} failed after {self.retry_config.max_attempts} attempts. "
+                        f"Final error: {e}"
+                    )
                     raise e
                 
                 # Calculate delay with exponential backoff
@@ -224,8 +243,7 @@ class ComplianceTool(ABC):
                     delay *= (0.5 + random.random() * 0.5)  # 50-100% of calculated delay
                 
                 logger.warning(
-                    f"Attempt {attempt + 1}/{self.retry_config.max_attempts} failed: {e}. "
-                    f"Retrying in {delay:.2f}s"
+                    f"{self.__class__.__name__} retrying in {delay:.2f}s (attempt {attempt + 1}/{self.retry_config.max_attempts})"
                 )
                 time.sleep(delay)
         
@@ -236,6 +254,21 @@ class ComplianceTool(ABC):
     def _run_impl(self, **kwargs) -> Dict[str, Any]:
         """Implementation of tool logic. Must be overridden by subclasses."""
         pass
+    
+    def _get_fallback_data(self, **kwargs) -> Dict[str, Any]:
+        """
+        Get fallback data when API fails. Override in subclasses to provide mock data.
+        
+        Args:
+            **kwargs: Same arguments passed to _run_impl
+            
+        Returns:
+            Dict containing fallback/mock data
+            
+        Raises:
+            NotImplementedError: If subclass doesn't implement fallback data
+        """
+        raise NotImplementedError(f"{self.__class__.__name__} does not implement fallback data")
     
     def run(self, **kwargs) -> ToolResponse:
         """
@@ -255,6 +288,7 @@ class ComplianceTool(ABC):
         
         def execute_with_protection():
             nonlocal retry_count
+            retry_count += 1
             
             # Apply rate limiting
             self._rate_limit()
@@ -273,7 +307,7 @@ class ComplianceTool(ABC):
                 data=result,
                 cached=False,
                 execution_time_ms=execution_time_ms,
-                retry_count=retry_count,
+                retry_count=retry_count - 1,  # Subtract 1 since we increment on first attempt
                 circuit_breaker_state=self.circuit_breaker.state.value
             )
             
@@ -281,31 +315,49 @@ class ComplianceTool(ABC):
             self._set_cache(cache_key, response)
             return response
         
-        except httpx.HTTPError as e:
-            logger.error(f"{self.__class__.__name__} HTTP error: {e}")
-            execution_time_ms = int((time.time() - start_time) * 1000)
-            
-            return ToolResponse(
-                success=False,
-                error=f"HTTP error: {str(e)}",
-                error_type="http_error",
-                execution_time_ms=execution_time_ms,
-                retry_count=retry_count,
-                circuit_breaker_state=self.circuit_breaker.state.value
-            )
-        
         except Exception as e:
-            logger.error(f"{self.__class__.__name__} error: {e}")
+            logger.error(
+                f"{self.__class__.__name__} final failure after retries: {e}",
+                extra={
+                    "tool_name": self.__class__.__name__,
+                    "total_attempts": retry_count,
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                    "kwargs": kwargs
+                }
+            )
+            
             execution_time_ms = int((time.time() - start_time) * 1000)
             
-            return ToolResponse(
-                success=False,
-                error=str(e),
-                error_type="unknown",
-                execution_time_ms=execution_time_ms,
-                retry_count=retry_count,
-                circuit_breaker_state=self.circuit_breaker.state.value
-            )
+            # Try to get fallback data (requirement 7.1)
+            try:
+                fallback_data = self._get_fallback_data(**kwargs)
+                logger.info(f"{self.__class__.__name__} using fallback data after API failure")
+                
+                return ToolResponse(
+                    success=True,
+                    data=fallback_data,
+                    cached=False,
+                    execution_time_ms=execution_time_ms,
+                    retry_count=retry_count - 1,
+                    circuit_breaker_state=self.circuit_breaker.state.value,
+                    error=f"API failed, using fallback: {str(e)}",
+                    error_type="api_failure_fallback"
+                )
+            except Exception as fallback_error:
+                logger.error(f"{self.__class__.__name__} fallback also failed: {fallback_error}")
+                
+                # Determine error type
+                error_type = "http_error" if isinstance(e, httpx.HTTPError) else "unknown"
+                
+                return ToolResponse(
+                    success=False,
+                    error=str(e),
+                    error_type=error_type,
+                    execution_time_ms=execution_time_ms,
+                    retry_count=retry_count - 1,
+                    circuit_breaker_state=self.circuit_breaker.state.value
+                )
     
     def clear_cache(self):
         """Clear all cached results."""

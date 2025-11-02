@@ -74,18 +74,22 @@ def test_refusals_tool_by_hts():
     assert result.data is not None
     data = result.data
     assert "total_refusals" in data
-    assert "fda_refusals" in data
-    assert "fsis_refusals" in data
+    assert "refusals_by_agency" in data
+    assert "risk_analysis" in data
+    assert "insights" in data
 
 
 def test_refusals_tool_by_country():
     """Test refusals tool with country filter."""
     tool = RefusalsTool()
-    result = tool.run(country="CN", days=90)
+    result = tool.run(country="CN")
     
     assert result.success is True
     data = result.data
-    assert "refusals" in data
+    assert "total_refusals" in data
+    assert "refusals_by_agency" in data
+    assert "query_params" in data
+    assert data["query_params"]["country"] == "CN"
 
 
 def test_refusals_tool_no_criteria():
@@ -93,8 +97,10 @@ def test_refusals_tool_no_criteria():
     tool = RefusalsTool()
     result = tool.run()
     
-    assert result.success is False
-    assert result.error is not None
+    assert result.success is True  # Should work with no criteria (gets all refusals)
+    data = result.data
+    assert "total_refusals" in data
+    assert "refusals_by_agency" in data
 
 
 def test_rulings_tool_by_hts():

@@ -87,13 +87,61 @@ def generate_insights(stats: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+@step
+def store_analytics(user_id: str, analysis: Dict[str, Any]) -> bool:
+    """
+    Store memory analytics in Supabase for historical tracking.
+    
+    Optional step: Only use if you need time-series analytics.
+    Stores snapshot of memory stats for trend analysis.
+    
+    Args:
+        user_id: User identifier
+        analysis: Analytics results to store
+        
+    Returns:
+        True if stored successfully
+    """
+    from datetime import datetime
+    from exim_agent.infrastructure.db.supabase_client import supabase_client
+    
+    if not supabase_client._client:
+        logger.warning("Supabase not configured - skipping analytics storage")
+        return False
+    
+    try:
+        analytics_record = {
+            "user_id": user_id,
+            "total_memories": analysis["stats"]["total_memories"],
+            "avg_memory_length": analysis["stats"]["avg_memory_length"],
+            "memory_types": analysis["stats"]["memory_types"],
+            "insights": analysis["insights"],
+            "recommendations": analysis["recommendations"],
+            "analyzed_at": datetime.utcnow().isoformat()
+        }
+        
+        result = supabase_client._client.table("memory_analytics").insert(
+            analytics_record
+        ).execute()
+        
+        logger.info(f"Stored memory analytics for {user_id}")
+        return True
+        
+    except Exception as e:
+        logger.warning(f"Failed to store analytics (non-critical): {e}")
+        return False
+
+
 @pipeline
-def memory_analytics_pipeline(user_id: str):
+def memory_analytics_pipeline(user_id: str, store_results: bool = True):
     """
     Analyze Mem0 memory patterns and generate insights.
     
+    Optionally stores results in Supabase for time-series tracking.
+    
     Args:
         user_id: User identifier to analyze memories for
+        store_results: Whether to store analytics in Supabase (default: True)
         
     Returns:
         Dict containing stats, insights, and recommendations
@@ -101,4 +149,10 @@ def memory_analytics_pipeline(user_id: str):
     memories = fetch_user_memories(user_id)
     stats = analyze_memory_patterns(memories)
     insights = generate_insights(stats)
+    
+    # Optional: Store for historical tracking
+    if store_results:
+        stored = store_analytics(user_id=user_id, analysis=insights)
+        insights["stored"] = stored
+    
     return insights

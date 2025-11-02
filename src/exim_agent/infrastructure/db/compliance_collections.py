@@ -852,6 +852,30 @@ class ComplianceCollections:
                 stats[name] = {"error": str(e)}
         
         return stats
+    
+    def health_check(self) -> bool:
+        """
+        Check health of all compliance collections.
+        
+        Returns:
+            True if all collections are healthy, False otherwise
+        """
+        if not self._initialized:
+            logger.warning("Collections not initialized for health check")
+            return False
+        
+        try:
+            for name, collection in self._collections.items():
+                # Try to get collection count as a basic health check
+                count = collection._collection.count()
+                logger.debug(f"Collection {name} has {count} documents")
+            
+            logger.info("All compliance collections are healthy")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Health check failed for compliance collections: {e}")
+            return False
 
 
 # Global instance

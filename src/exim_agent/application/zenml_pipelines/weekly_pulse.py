@@ -298,7 +298,11 @@ def save_digest(
     digest: Dict[str, Any]
 ) -> bool:
     """
-    Step 7: Save digest to storage (mem0 or database).
+    Step 7: Save digest to Supabase (primary storage) and optionally index in Chroma.
+    
+    Architecture:
+    - Supabase: Primary storage for structured transactional data
+    - Chroma: Optional semantic search index for digest summaries
     
     Args:
         client_id: Client identifier
@@ -309,31 +313,64 @@ def save_digest(
     """
     logger.info(f"Saving digest for {client_id}...")
     
-    # In production, would save to:
-    # 1. Events collection for historical tracking
-    # 2. mem0 for client memory
-    # 3. Database for API retrieval
-    
     try:
-        # Save to events collection
-        event_id = f"pulse_{client_id}_{digest['period_end']}"
+        # 1. PRIMARY: Save to Supabase (source of truth for transactional data)
+        from exim_agent.infrastructure.db.supabase_client import supabase_client
         
-        compliance_collections.add_compliance_event(
-            event_id=event_id,
+        result = supabase_client.store_weekly_pulse_digest(
             client_id=client_id,
-            sku_id="all",
-            lane_id="all",
-            event_type="weekly_pulse",
-            risk_level="info",
-            title=f"Weekly Compliance Pulse - {digest['period_end']}",
-            summary=f"Generated pulse with {digest['summary']['total_changes']} changes",
-            metadata={
-                "total_changes": digest['summary']['total_changes'],
-                "high_priority": digest['summary']['high_priority_changes'],
-                "period_start": digest['period_start'],
-                "period_end": digest['period_end']
-            }
+            digest=digest
         )
+        
+        if not result:
+            logger.warning("Failed to save digest to Supabase, but continuing...")
+        else:
+            logger.info(f"Digest saved to Supabase with ID: {result.get('id')}")
+        
+        # 2. OPTIONAL: Index summary in Chroma for semantic search
+        # Only index if you need to semantically search across digest content
+        try:
+            summary_text = f"""
+Weekly Compliance Pulse for {client_id}
+Period: {digest['period_start']} to {digest['period_end']}
+Total Changes: {digest['summary']['total_changes']}
+High Priority Changes: {digest['summary']['high_priority_changes']}
+Medium Priority Changes: {digest['summary'].get('medium_priority_changes', 0)}
+Status: {digest['status']}
+Requires Action: {'Yes' if digest['requires_action'] else 'No'}
+
+Change Types:
+{', '.join(f"{k}: {v}" for k, v in digest['summary'].get('change_types', {}).items())}
+
+Top Changes:
+{chr(10).join(f"- {c.get('description', '')} (Priority: {c.get('priority', 'unknown')})" for c in digest.get('top_changes', [])[:5])}
+"""
+            
+            # Index in Chroma for semantic search capabilities
+            policy_collection = compliance_collections.get_collection(
+                compliance_collections.POLICY
+            )
+            
+            policy_collection.add_texts(
+                texts=[summary_text],
+                metadatas=[{
+                    "doc_type": "weekly_pulse",
+                    "client_id": client_id,
+                    "digest_id": result.get('id') if result else None,
+                    "period_end": digest['period_end'],
+                    "requires_action": str(digest['requires_action']),
+                    "status": digest['status'],
+                    "total_changes": digest['summary']['total_changes'],
+                    "source": "weekly_pulse_pipeline",
+                    "ingested_at": datetime.utcnow().isoformat()
+                }],
+                ids=[f"pulse_{client_id}_{digest['period_end']}"]
+            )
+            
+            logger.info("Digest summary indexed in Chroma for semantic search")
+            
+        except Exception as chroma_error:
+            logger.warning(f"Failed to index digest in Chroma (non-critical): {chroma_error}")
         
         logger.info("Digest saved successfully")
         return True

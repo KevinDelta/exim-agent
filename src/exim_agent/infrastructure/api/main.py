@@ -39,6 +39,8 @@ from .models import (
 from .routes.memory_routes import router as memory_router
 # Compliance routes
 from .routes.compliance_routes import router as compliance_router
+# Admin routes
+from .routes.admin_routes import router as admin_router
 
 
 @asynccontextmanager
@@ -84,6 +86,8 @@ app.add_middleware(
 app.include_router(memory_router)
 # Include Compliance routes
 app.include_router(compliance_router)
+# Include Admin routes
+app.include_router(admin_router)
 
 
 @app.get("/")

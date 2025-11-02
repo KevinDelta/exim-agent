@@ -51,6 +51,10 @@ Create a `.env` file:
 # Required
 OPENAI_API_KEY="your-openai-key"
 
+# Compliance Data Source API Keys (Required for real data ingestion)
+CSL_API_KEY="your-csl-api-key"        # ITA Consolidated Screening List API
+FDA_API_KEY="your-fda-api-key"        # FDA Import Refusals API (if required)
+
 # Mem0 Configuration (Optional - uses Qdrant for memory storage)
 MEM0_API_KEY="your-mem0-key"  # If using Mem0 cloud
 MEM0_ENABLED=true
