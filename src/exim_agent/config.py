@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     # Supabase Configuration
     supabase_url: str | None = None
     supabase_anon_key: str | None = None
+    supabase_service_key: str | None = None  # For backend operations
     
     # Compliance Data Source API Keys
     csl_api_key: str | None = None  # ITA Consolidated Screening List API

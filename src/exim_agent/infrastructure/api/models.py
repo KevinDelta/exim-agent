@@ -7,8 +7,8 @@ class ChatRequest(BaseModel):
     """Request model for chat."""
     message: str | dict = Field(..., description="The user's message")
     conversation_history: Optional[list[dict]] = Field(
-        default_factory=list, example=[],
-        description="Optional conversation history (list of message dicts with 'role' and 'content')"
+        default=None,
+        description="DEPRECATED: Conversation history is now managed automatically by Mem0. This field is ignored."
     )
     stream: bool = Field(False, description="Whether to stream the response")
 

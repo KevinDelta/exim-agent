@@ -1,9 +1,10 @@
 """Supabase client for compliance data storage."""
 
 from typing import Dict, Any, List, Optional
+from datetime import datetime
 import logging
 from supabase import create_client, Client
-from src.exim_agent.config import config
+from exim_agent.config import config
 
 logger = logging.getLogger(__name__)
 
@@ -13,14 +14,22 @@ class SupabaseClient:
     
     def __init__(self):
         """Initialize Supabase client."""
-        if not config.supabase_url or not config.supabase_anon_key:
+        if not config.supabase_url:
             logger.warning("Supabase not configured - compliance data will not be stored")
             self._client = None
         else:
-            self._client: Client = create_client(
-                config.supabase_url, 
-                config.supabase_anon_key
-            )
+            # Use service_role key for backend operations (bypasses RLS)
+            # Falls back to anon_key if service key not available
+            api_key = config.supabase_service_key or config.supabase_anon_key
+            
+            if not api_key:
+                logger.warning("No Supabase API key configured")
+                self._client = None
+            else:
+                self._client: Client = create_client(
+                    config.supabase_url, 
+                    api_key
+                )
     
     def store_compliance_data(
         self, 
@@ -183,11 +192,67 @@ class SupabaseClient:
         """
         digests = self.get_weekly_pulse_digests(client_id, limit=1)
         return digests[0] if digests else None
-    
+
+    def store_memory_analytics(
+        self,
+        user_id: str,
+        analysis: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
+        """Persist memory analytics snapshot for historical tracking."""
+        if not self._client:
+            logger.warning("Supabase client not available - skipping memory analytics storage")
+            return None
+
+        try:
+            record = {
+                "user_id": user_id,
+                "total_memories": analysis["stats"].get("total_memories", 0),
+                "avg_memory_length": analysis["stats"].get("avg_memory_length", 0.0),
+                "memory_types": analysis["stats"].get("memory_types", {}),
+                "insights": analysis.get("insights", []),
+                "recommendations": analysis.get("recommendations", []),
+                "analyzed_at": analysis.get("analyzed_at") or datetime.utcnow().isoformat()
+            }
+
+            result = self._client.table("memory_analytics").insert(record).execute()
+            logger.info(f"Stored memory analytics snapshot for user {user_id}")
+            return result.data[0] if result.data else None
+
+        except Exception as e:
+            logger.error(f"Failed to store memory analytics: {e}")
+            return None
+
+    def get_memory_analytics(
+        self,
+        user_id: str,
+        limit: int = 30
+    ) -> List[Dict[str, Any]]:
+        """Retrieve recent memory analytics snapshots for a user."""
+        if not self._client:
+            logger.warning("Supabase client not available - returning empty analytics list")
+            return []
+
+        try:
+            result = (
+                self._client
+                .table("memory_analytics")
+                .select("*")
+                .eq("user_id", user_id)
+                .order("analyzed_at", desc=True)
+                .limit(limit)
+                .execute()
+            )
+            return result.data
+
+        except Exception as e:
+            logger.error(f"Failed to retrieve memory analytics: {e}")
+            return []
+
     def health_check(self) -> bool:
         """Check if Supabase connection is healthy."""
         if not self._client:
             return False
+
             
         try:
             # Simple query to test connection

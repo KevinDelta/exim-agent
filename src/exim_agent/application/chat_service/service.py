@@ -55,7 +55,6 @@ class ChatService:
     def chat(
         self,
         message: str,
-        conversation_history: list | None = None,
         user_id: str = "default",
         session_id: str | None = None
     ) -> dict:
@@ -64,7 +63,6 @@ class ChatService:
 
         Args:
             message: The user's message
-            conversation_history: Optional (deprecated - Mem0 handles history)
             user_id: User identifier for memory
             session_id: Session identifier for memory
             

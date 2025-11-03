@@ -111,8 +111,8 @@ async def chat(request: ChatRequest) -> ChatResponse:
         logger.info(f"Chat request: {request.message[:50]}...")
         
         result = chat_service.chat(
-            message=request.message,
-            conversation_history=request.conversation_history
+            message=request.message
+            # Note: Mem0 handles conversation_history automatically via session_id
         )
         
         return ChatResponse(

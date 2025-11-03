@@ -20,7 +20,7 @@ Weekly pulse digests are **structured transactional data**, not vector embedding
 
 ### Data Flow
 
-```
+```bash
 Weekly Pulse Pipeline (ZenML)
   ↓
   ├─ Supabase (PRIMARY) ─────────────→ API Retrieval
@@ -40,6 +40,7 @@ Weekly Pulse Pipeline (ZenML)
 ### 1. Supabase Client (`infrastructure/db/supabase_client.py`)
 
 **Added Methods:**
+
 - `store_weekly_pulse_digest()` - Save digest to Supabase
 - `get_weekly_pulse_digests()` - Retrieve digests with filters
 - `get_latest_digest()` - Get most recent digest
@@ -95,6 +96,7 @@ GET /compliance/pulse/{client_id}/weekly?limit=1&requires_action_only=false
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -141,6 +143,7 @@ CREATE TABLE weekly_pulse_digests (
 ```
 
 **Indexes:**
+
 - `idx_weekly_pulse_client_period` - Fast client + date queries
 - `idx_weekly_pulse_requires_action` - Action-required filtering
 - `idx_weekly_pulse_digest_data` - GIN index for JSONB queries
@@ -151,13 +154,15 @@ CREATE TABLE weekly_pulse_digests (
 
 ### 1. Run Database Migration
 
-**Option A: Supabase Dashboard**
+**Option A: Supabase Dashboard**:
+
 ```bash
 # Copy SQL from migrations/001_create_weekly_pulse_digests.sql
 # Paste into Supabase Dashboard > SQL Editor > Run
 ```
 
-**Option B: Migration Script**
+**Option B: Migration Script**:
+
 ```bash
 uv run python scripts/run_migrations.py
 ```
@@ -210,6 +215,7 @@ curl "http://localhost:8000/compliance/pulse/test_client/weekly?limit=3"
 ## Benefits of This Architecture
 
 ### ✅ Structured Queries
+
 ```sql
 -- Get all action-required digests in last 3 months
 SELECT * FROM weekly_pulse_digests
@@ -220,6 +226,7 @@ ORDER BY period_end DESC;
 ```
 
 ### ✅ Time-Series Analysis
+
 ```sql
 -- Track high-priority changes over time
 SELECT 
@@ -232,16 +239,19 @@ ORDER BY period_end;
 ```
 
 ### ✅ API Performance
+
 - Fast retrieval by ID: `O(1)` with primary key
 - Indexed date range queries
 - No vector similarity computation overhead
 
 ### ✅ Data Integrity
+
 - Foreign key constraints (when adding client profiles)
 - Check constraints on valid values
 - Automatic timestamp updates
 
 ### ✅ Optional Semantic Search
+
 ```python
 # When you need it: "Find weeks with similar compliance patterns"
 similar_digests = chroma_collection.similarity_search(
@@ -298,7 +308,7 @@ print(f"Retrieved: {latest['period_end']}")
 - `scripts/run_migrations.py` - Automated migration runner
 - `docs/WEEKLY_PULSE_IMPLEMENTATION.md` - This document
 
-## Files Modified
+## Files Modifiedd
 
 - `infrastructure/db/supabase_client.py` - Added digest storage methods
 - `zenml_pipelines/weekly_pulse.py` - Updated save_digest step

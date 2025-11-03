@@ -80,7 +80,6 @@ export function useComplianceWorkflow(): UseComplianceWorkflowReturn {
   
   // Refs for managing conversation context
   const messageIdCounter = useRef(0);
-  const conversationHistory = useRef<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
 
   // Fetch compliance snapshot
   const fetchSnapshot = useCallback(async (params: SnapshotRequest) => {
@@ -107,10 +106,6 @@ export function useComplianceWorkflow(): UseComplianceWorkflowReturn {
         };
         
         setChatMessages(prev => [...prev, systemMessage]);
-        conversationHistory.current.push({
-          role: 'assistant',
-          content: systemMessage.content
-        });
       }
     } catch (err) {
       const errorMessage = err instanceof ApiError 
@@ -144,10 +139,6 @@ export function useComplianceWorkflow(): UseComplianceWorkflowReturn {
     };
 
     setChatMessages(prev => [...prev, userMessage]);
-    conversationHistory.current.push({
-      role: 'user',
-      content: message
-    });
 
     try {
       // Prepare enhanced message with compliance context
@@ -169,8 +160,8 @@ export function useComplianceWorkflow(): UseComplianceWorkflowReturn {
       }
 
       const chatRequest: ChatRequest = {
-        message: enhancedMessage,
-        conversation_history: conversationHistory.current.slice(-10) // Keep last 10 messages for context
+        message: enhancedMessage
+        // Note: Mem0 handles conversation history automatically
       };
 
       const response = await sendChatMessageWithRetry(chatRequest);
@@ -189,10 +180,6 @@ export function useComplianceWorkflow(): UseComplianceWorkflowReturn {
         };
 
         setChatMessages(prev => [...prev, assistantMessage]);
-        conversationHistory.current.push({
-          role: 'assistant',
-          content: response.response
-        });
       } else {
         throw new Error(response.error || 'Failed to get response from chat service');
       }
@@ -219,7 +206,6 @@ export function useComplianceWorkflow(): UseComplianceWorkflowReturn {
   // Clear chat history
   const clearChatHistory = useCallback(() => {
     setChatMessages([]);
-    conversationHistory.current = [];
     messageIdCounter.current = 0;
   }, []);
 

@@ -35,14 +35,6 @@ class MemoryState(TypedDict):
 def load_memories(state: MemoryState) -> MemoryState:
     """
     Load relevant memories from Mem0.
-    
-    Replaces:
-    - load_working_memory (session context)
-    - classify_intent (intent detection)
-    - extract_entities (entity extraction)
-    - query_episodic_memory (EM retrieval)
-    
-    Mem0 handles all of this automatically.
     """
     logger.info(f"Loading Mem0 memories for session: {state['session_id']}")
     
@@ -289,13 +281,6 @@ def update_memories(state: MemoryState) -> MemoryState:
 def build_memory_graph() -> StateGraph:
     """
     Build the simplified LangGraph state machine with Mem0.
-    
-    Reduced from 7 nodes to 5 nodes:
-    1. load_memories (Mem0) - replaces 3 nodes
-    2. query_documents (RAG) - unchanged
-    3. rerank_and_fuse (cross-encoder) - unchanged
-    4. generate_response (LLM) - unchanged
-    5. update_memories (Mem0) - replaces 3 nodes
     """
     logger.info("Building Mem0-powered LangGraph")
     

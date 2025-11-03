@@ -60,6 +60,7 @@ Primary storage for weekly compliance pulse digests.
 **Purpose**: Store structured transactional data for weekly compliance digests with fast SQL queries.
 
 **Key Fields**:
+
 - `client_id`: Client identifier
 - `period_start` / `period_end`: Pulse period timeframe
 - `total_changes`: Number of compliance changes
@@ -69,6 +70,7 @@ Primary storage for weekly compliance pulse digests.
 - `digest_data`: Full JSON payload
 
 **Indexes**:
+
 - Fast queries by client + period
 - Filtered index for action-required digests
 - GIN index for JSON queries
@@ -82,6 +84,7 @@ Time-series tracking of Mem0 memory usage patterns.
 **Purpose**: Store analytics snapshots for trend analysis and memory health monitoring.
 
 **Key Fields**:
+
 - `user_id`: User identifier from Mem0
 - `total_memories`: Memory count at analysis time
 - `avg_memory_length`: Average memory content length
@@ -90,6 +93,7 @@ Time-series tracking of Mem0 memory usage patterns.
 - `recommendations`: Array of actionable recommendations
 
 **Indexes**:
+
 - Fast queries by user + date
 - GIN index for JSON type queries
 
@@ -154,6 +158,7 @@ DROP FUNCTION IF EXISTS update_weekly_pulse_updated_at() CASCADE;
 After running migrations:
 
 1. Update your Supabase environment variables in `.env`:
+
    ```bash
    SUPABASE_URL=https://your-project.supabase.co
    SUPABASE_ANON_KEY=your-anon-key
@@ -161,11 +166,13 @@ After running migrations:
    ```
 
 2. Test the connection:
+
    ```bash
    uv run python -c "from exim_agent.infrastructure.db.supabase_client import supabase_client; print(supabase_client.health_check())"
    ```
 
 3. Run the weekly pulse pipeline:
+
    ```bash
    uv run python -c "from exim_agent.application.zenml_pipelines.weekly_pulse import weekly_pulse_pipeline; weekly_pulse_pipeline(client_id='test_client')"
    ```

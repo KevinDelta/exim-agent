@@ -35,23 +35,11 @@ export const useChat = () => {
     setLoading(true);
 
     try {
-      // Prepare conversation history for API
-      const conversationHistory = messages.map(msg => ({
-        role: msg.role,
-        content: msg.content,
-      }));
-
-      // Add the current user message to history
-      conversationHistory.push({
-        role: 'user',
-        content: content.trim(),
-      });
-
       // Call the actual chat API
+      // Note: Mem0 handles conversation history automatically
       const { sendChatMessageWithRetry } = await import('@/lib/api');
       const response = await sendChatMessageWithRetry({
         message: content.trim(),
-        conversation_history: conversationHistory,
         stream: false,
       });
 
