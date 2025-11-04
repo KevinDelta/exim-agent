@@ -1,0 +1,8 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "agent": "./src/exim_agent/application/chat_service/graph.py:memory_graph",
+    "compliance": "./src/exim_agent/application/compliance_service/compliance_graph.py:compliance_graph"
+  },
+  "env": ".env"
+}

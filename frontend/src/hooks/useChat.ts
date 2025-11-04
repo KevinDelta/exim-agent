@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import { useChatStore } from '@/stores/chatStore';
-import { ChatMessage, ChatError } from '@/types/chat';
+import { ChatMessage } from '@/types/chat';
 
 export const useChat = () => {
   const {
@@ -79,7 +79,7 @@ export const useChat = () => {
     } finally {
       setLoading(false);
     }
-  }, [addMessage, setLoading, isLoading, sessionId, messages]);
+  }, [addMessage, setLoading, isLoading, sessionId]);
 
   // Toggle chat expansion and mark as read
   const handleToggleExpanded = useCallback(() => {

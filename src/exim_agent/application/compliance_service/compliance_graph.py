@@ -324,3 +324,6 @@ def build_compliance_graph() -> StateGraph:
     
     return graph.compile()
 
+compliance_graph = build_compliance_graph()
+
+

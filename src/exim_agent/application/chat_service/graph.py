@@ -83,14 +83,22 @@ def query_documents(state: MemoryState) -> MemoryState:
     query = state["query"]
     
     try:
-        # Query ChromaDB documents collection
-        results = chroma_client.query_documents(
-            query_text=query,
+        # Query ChromaDB documents collection using LangChain vector store
+        vector_store = chroma_client.get_vector_store()
+        documents = vector_store.similarity_search(
+            query,
             k=config.retrieval_k
         )
         
-        state["rag_context"] = results
-        logger.info(f"Retrieved {len(results)} RAG documents")
+        # Normalize to simple dict format for downstream processing
+        state["rag_context"] = [
+            {
+                "content": doc.page_content,
+                "metadata": dict(doc.metadata or {})
+            }
+            for doc in documents
+        ]
+        logger.info(f"Retrieved {len(documents)} RAG documents")
         
     except Exception as e:
         logger.error(f"Failed to query documents: {e}")

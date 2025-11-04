@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { 
   ComplianceSnapshot, 
   SnapshotRequest, 
-  ApiError 
 } from '@/lib/types';
 import { getComplianceSnapshotWithRetry } from '@/lib/api';
 
@@ -53,9 +52,7 @@ export function useComplianceSnapshot(
       const result = await getComplianceSnapshotWithRetry(params);
       setSnapshot(result);
     } catch (err) {
-      const errorMessage = err instanceof ApiError 
-        ? err.message 
-        : err instanceof Error 
+      const errorMessage = err instanceof Error 
         ? err.message 
         : 'An unexpected error occurred';
       

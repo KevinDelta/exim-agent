@@ -1,12 +1,14 @@
-"""HTS tool for real USITC API integration with Supabase storage."""
+"""HTS tool for real USITC API integration with storage layers."""
 
+import time
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from loguru import logger
 import httpx
 
 from .base_tool import ComplianceTool
 from ...infrastructure.db.supabase_client import supabase_client
+from ...infrastructure.db.compliance_collections import compliance_collections
 
 
 class HTSTool(ComplianceTool):
@@ -17,7 +19,6 @@ class HTSTool(ComplianceTool):
         super().__init__()
         self.name = "search_hts"
         self.description = "Search HTS codes and get tariff information from USITC API"
-    
     def _store_hts_data(self, hts_code: str, data: Dict[str, Any]) -> bool:
         """
         Store HTS data in Supabase.
@@ -30,6 +31,84 @@ class HTSTool(ComplianceTool):
             True if successful, False otherwise
         """
         return supabase_client.store_compliance_data("hts", hts_code, data)
+
+    def _store_hts_vector(self, hts_code: str, data: Dict[str, Any]) -> None:
+        """
+        Store HTS data in Chroma vector store for fast retrieval.
+
+        Args:
+            hts_code: HTS code identifier
+            data: HTS data payload
+        """
+        try:
+            compliance_collections.initialize()
+            collection = compliance_collections.get_collection(
+                compliance_collections.HTS_NOTES
+            )
+            
+            description = data.get("description") or data.get("note") or ""
+            if not description:
+                # Nothing to index meaningfully
+                return
+            
+            metadata = {
+                "hts_code": hts_code,
+                "duty_rate": data.get("duty_rate"),
+                "unit": data.get("unit"),
+                "source_url": data.get("source_url"),
+                "api_source": data.get("api_source"),
+                "last_updated": data.get("last_updated"),
+            }
+            
+            collection.add_texts(
+                texts=[description],
+                metadatas=[metadata],
+                ids=[f"hts:{hts_code}:{int(time.time())}"]
+            )
+            logger.info(f"Stored HTS {hts_code} in Chroma collection")
+        except Exception as e:
+            logger.warning(f"Failed to store HTS {hts_code} in Chroma: {e}")
+
+    def _get_hts_from_store(self, hts_code: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve HTS data from Chroma vector store if available.
+
+        Args:
+            hts_code: HTS code identifier
+
+        Returns:
+            HTS data dict if found, otherwise None
+        """
+        try:
+            compliance_collections.initialize()
+            results = compliance_collections.search_hts_notes(
+                query=hts_code,
+                hts_code=hts_code,
+                limit=1
+            )
+            if not results:
+                return None
+            
+            note = results[0]
+            metadata = note.get("metadata", {}) or {}
+            description = note.get("content") or metadata.get("summary")
+            
+            logger.info(f"HTS {hts_code} served from Chroma store")
+            
+            return {
+                "hts_code": metadata.get("hts_code", hts_code),
+                "description": description or f"HTS {hts_code} reference note",
+                "duty_rate": metadata.get("duty_rate", "See metadata"),
+                "unit": metadata.get("unit") or metadata.get("unit_of_quantity") or "Unit",
+                "source_url": metadata.get("source_url"),
+                "last_updated": metadata.get("last_updated", datetime.utcnow().isoformat() + "Z"),
+                "api_source": metadata.get("api_source", "Chroma HTS notes"),
+                "metadata": metadata,
+                "retrieval_source": "chroma",
+            }
+        except Exception as e:
+            logger.warning(f"Failed to read HTS {hts_code} from Chroma: {e}")
+            return None
     
     def _validate_hts_code(self, hts_code: str) -> bool:
         """
@@ -74,6 +153,11 @@ class HTSTool(ComplianceTool):
         if not self._validate_hts_code(hts_code):
             logger.error(f"Invalid HTS code format: {hts_code}")
             raise ValueError(f"Invalid HTS code format: {hts_code}")
+
+        # Attempt to retrieve from Chroma vector store first
+        store_result = self._get_hts_from_store(hts_code)
+        if store_result:
+            return store_result
         
         # Use the current USITC website structure
         # Extract chapter from HTS code (first 4 digits)
@@ -95,6 +179,8 @@ class HTSTool(ComplianceTool):
         
         # Store the result in Supabase
         self._store_hts_data(hts_code, result)
+        # Store the result in vector store for future retrievals
+        self._store_hts_vector(hts_code, result)
         
         return result
     
@@ -205,4 +291,3 @@ class HTSTool(ComplianceTool):
             }
         
         return result
-
