@@ -15,8 +15,8 @@ class Evidence(BaseModel):
         description="Source name (e.g., USITC HTS, OFAC CSL, FDA)",
         examples=["USITC HTS Database", "OFAC Consolidated Screening List"]
     )
-    url: str = Field(
-        ...,
+    url: Optional[str] = Field(
+        default=None,
         description="URL to source document or data",
         examples=["https://hts.usitc.gov/view/chapter?release=2025HTSARev0"]
     )
@@ -29,7 +29,7 @@ class Evidence(BaseModel):
         ...,
         description="ISO 8601 timestamp of when source was last updated",
         examples=["2025-01-15T10:00:00Z"]
-    )
+    ) 
     confidence: float = Field(
         default=1.0,
         description="Confidence score for this evidence (0.0 to 1.0)",

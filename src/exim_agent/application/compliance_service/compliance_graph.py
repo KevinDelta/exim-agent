@@ -113,7 +113,7 @@ def retrieve_context_node(state: ComplianceState) -> ComplianceState:
             compliance_collections.initialize()
         
         # Simple context retrieval - just get some relevant docs
-        hts_code = "8517.12.00"  # Default for MVP
+        hts_code = state.get('hts_code', '8517.12.00')  # Default for MVP
         
         # Search for relevant documents
         hts_notes = compliance_collections.search_hts_notes(

@@ -426,8 +426,8 @@ class Evidence(BaseModel):
         description="Source name (e.g., USITC HTS, OFAC CSL, FDA)",
         examples=["USITC HTS Database", "OFAC Consolidated Screening List"]
     )
-    url: str = Field(
-        ...,
+    url: Optional[str] = Field(
+        default=None,
         description="URL to source document or data",
         examples=["https://hts.usitc.gov/view/chapter?release=2025HTSARev0"]
     )
