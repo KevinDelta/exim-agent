@@ -86,7 +86,7 @@ class RetryConfig(BaseModel):
     """Configuration for retry logic."""
     
     max_attempts: int = Field(
-        default=3,
+        default=2,
         description="Maximum number of retry attempts",
         ge=1,
         le=10

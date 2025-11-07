@@ -41,6 +41,8 @@ from .routes.memory_routes import router as memory_router
 from .routes.compliance_routes import router as compliance_router
 # Admin routes
 from .routes.admin_routes import router as admin_router
+# Crawling routes
+from .routes.crawl_routes import router as crawl_router
 
 
 @asynccontextmanager
@@ -88,6 +90,8 @@ app.include_router(memory_router)
 app.include_router(compliance_router)
 # Include Admin routes
 app.include_router(admin_router)
+# Include Crawling routes
+app.include_router(crawl_router)
 
 
 @app.get("/")

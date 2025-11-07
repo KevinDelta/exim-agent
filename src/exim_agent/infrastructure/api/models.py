@@ -162,3 +162,26 @@ class WeeklyPulseResponse(BaseModel):
     summary: Optional[Dict[str, Any]] = None
     changes: Optional[List[Dict[str, Any]]] = None
     error: Optional[str] = None
+
+
+# Crawling API Models
+
+class CrawlRequest(BaseModel):
+    """Request model for manual crawling trigger."""
+    domains: List[str] = Field(..., description="List of compliance domains to crawl (hts, rulings, sanctions, refusals)")
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "domains": ["hts", "rulings"]
+            }
+        }
+    }
+
+
+class CrawlResponse(BaseModel):
+    """Response model for crawling operations."""
+    success: bool
+    message: str
+    results_count: int
+    error: Optional[str] = None

@@ -110,7 +110,7 @@ def generate_current_snapshots(
                 current_snapshots[key] = {
                     "snapshot": result.get("snapshot", {}),
                     "citations": result.get("citations", []),
-                    "generated_at": datetime.utcnow().isoformat()
+                    "generated_at": datetime.now().isoformat()
                 }
             else:
                 logger.warning(f"Failed to generate snapshot for {key}: {result.get('error')}")
