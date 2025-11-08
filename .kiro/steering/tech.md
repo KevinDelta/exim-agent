@@ -18,6 +18,7 @@
 - **ChromaDB**: Vector database for embeddings storage
 - **SQLite**: Local database for Mem0 conversation history
 - **Unstructured**: Multi-format document processing
+- **Supabase**: Vector postgreSQL database for storage and retrieval
 
 ## MLOps & Monitoring
 - **ZenML**: ML pipeline orchestration and experiment tracking

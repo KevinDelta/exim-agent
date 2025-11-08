@@ -14,7 +14,7 @@ Sync backend dependencies with `uv sync` (CLI entry point `exim_agent.cli`). Cop
 
 ## Coding Style & Naming Conventions
 
-Python follows Ruff’s 120-character limit, snake_case functions, PascalCase classes, and Pydantic models for settings and payloads. Organize new services under `application/` and pass dependencies explicitly. Next.js components use PascalCase filenames, colocated CSS-in-JS, and hook names prefixed with `use`.
+Python follows Ruff’s 120-character limit, snake_case functions, PascalCase classes, and Pydantic models for settings and payloads. Latest python syntax and practices. Organize new services under `application/` and pass dependencies explicitly. Next.js components use PascalCase filenames, colocated CSS-in-JS, and hook names prefixed with `use`.
 
 ## Testing Guidelines
 

@@ -27,9 +27,10 @@ class CrawlService:
         logger.info("CrawlService initialized with crawlers: {}", list(self._crawlers.keys()))
     
     async def crawl_compliance_sources(
-        self, 
-        domains: List[str]
-    ) -> Dict[str, List[CrawlResult]]:
+    self, 
+    domains: List[str],
+    parameters: Optional[Dict[str, Any]] = None
+) -> Dict[str, List[CrawlResult]]:
         """
         Simple orchestration of web scraping operations across compliance domains.
         

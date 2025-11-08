@@ -157,11 +157,12 @@ class WeeklyPulseResponse(BaseModel):
     """Response model for weekly compliance pulse."""
     success: bool
     client_id: str
-    period_start: str
-    period_end: str
+    period_start: Optional[str] = None
+    period_end: Optional[str] = None
     summary: Optional[Dict[str, Any]] = None
     changes: Optional[List[Dict[str, Any]]] = None
     error: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
 # Crawling API Models
