@@ -1,206 +1,513 @@
-# ZenML Pipelines (Mem0-Optimized)
-
-This directory contains ZenML pipeline implementations for the Mem0-powered RAG system.
+# ZenML Pipelines
 
 ## Overview
 
-The ZenML pipelines provide MLOps capabilities for:
+ZenML pipelines orchestrate the automated generation of compliance digests (weekly/daily pulses) for client portfolios. These pipelines coordinate snapshot generation, delta computation, and digest creation to provide actionable compliance intelligence.
 
-- **Document ingestion** - Load documents into RAG knowledge base
-- **Memory analytics** - Analyze Mem0 usage patterns and generate insights
+## Purpose
 
-**Note**: This system uses Mem0 for conversational memory management. Mem0 handles memory distillation, storage, and lifecycle automatically, eliminating the need for separate distillation/promotion pipelines.
+- **Pulse Orchestration**: Automate weekly and daily compliance digest generation
+- **Portfolio Monitoring**: Track compliance status across multiple SKU+Lane combinations
+- **Change Detection**: Identify and prioritize compliance changes over time
+- **Digest Generation**: Create actionable summaries with top priority changes
+- **Historical Tracking**: Store digests in Supabase for audit and trend analysis
 
 ## Architecture
 
-```bash
-┌──────────────────────────────────────────────┐
-│           ZenML Orchestration                │
-│                                              │
-│  ┌────────────┐  ┌──────────────────────┐   │
-│  │ Ingestion  │  │ Memory Analytics     │   │
-│  │  Pipeline  │  │ Pipeline (Mem0)      │   │
-│  └────────────┘  └──────────────────────┘   │
-│                                              │
-│  Benefits:                                   │
-│  • Artifact caching & lineage                │
-│  • Experiment tracking (MLflow)              │
-│  • Version control for runs                  │
-│  • Reproducibility                           │
-└──────────────────────────────────────────────┘
+```
+Scheduler (Cron/ZenML)
+    ↓
+Load Client Portfolio
+    ↓
+Load Previous Snapshots (baseline)
+    ↓
+Generate Current Snapshots (parallel)
+    ↓
+Compute Deltas (tile-level comparison)
+    ↓
+Rank by Impact (priority scoring)
+    ↓
+Generate Digest (summary + top changes)
+    ↓
+Save to Supabase + Index in ChromaDB
+    ↓
+Notification (optional)
 ```
 
-## Pipelines
+## Key Pipelines
 
-### 1. Ingestion Pipeline (`ingestion_pipeline.py`)
+### Weekly Pulse Pipeline (`weekly_pulse.py`)
 
-Converts document ingestion into a tracked pipeline with:
+The primary pipeline for generating weekly compliance digests.
 
-**Steps:**
+#### Pipeline Steps
 
-1. `discover_documents` - Find all supported files
-2. `load_and_split_documents` - Load and chunk (cached)
-3. `generate_embeddings` - Create embeddings (cached)
-4. `store_in_chromadb` - Persist to vector DB
+1. **load_client_sku_lanes**: Retrieve client's monitored SKU+Lane portfolio
+2. **load_previous_snapshots**: Get baseline snapshots from last digest
+3. **generate_current_snapshots**: Create fresh snapshots for all SKU+Lanes
+4. **compute_deltas**: Compare current vs previous at tile level
+5. **rank_by_impact**: Prioritize changes by risk and urgency
+6. **generate_digest**: Create summary with top 10 changes
+7. **save_digest**: Persist to Supabase and index in ChromaDB
 
-**Benefits:**
-
-- Skip re-embedding unchanged documents via caching
-- Track which embedding model was used
-- Compare different chunking strategies
-- Full lineage from raw docs to storage
-
-**Usage:**
+#### Execution
 
 ```python
-from exim_agent.application.zenml_pipelines import run_ingestion_pipeline
+from exim_agent.application.zenml_pipelines.weekly_pulse import weekly_pulse_pipeline
 
-result = run_ingestion_pipeline(
-    directory_path="/path/to/documents",
-    chunk_size=1024,
-    chunk_overlap=200
+# Run pipeline for a client
+pipeline = weekly_pulse_pipeline(
+    client_id="acme_corp",
+    period_days=7  # weekly
+)
+
+pipeline.run()
+```
+
+#### Via API
+
+```bash
+curl -X POST http://localhost:8000/compliance/pulse/acme_corp/weekly
+```
+
+#### Via CLI
+
+```bash
+python scripts/run_pulse.py --client-id acme_corp --weekly
+```
+
+### Daily Pulse Pipeline
+
+Same pipeline as weekly, but with `period_days=1` for daily monitoring.
+
+```python
+pipeline = weekly_pulse_pipeline(
+    client_id="acme_corp",
+    period_days=1  # daily
 )
 ```
 
-**API Endpoint:**
+## Pipeline Components
 
-```bash
-POST /pipelines/ingest
+### Step 1: Load Client SKU+Lanes
+
+**Purpose**: Retrieve the list of products and trade routes to monitor
+
+**Data Source**: 
+- Supabase `client_portfolios` table
+- Fallback to configuration file if DB unavailable
+
+**Output**:
+```python
+[
+    {
+        "sku_id": "WIDGET-001",
+        "lane_id": "US-CN",
+        "hts_code": "8471.30.01",
+        "description": "Portable computers"
+    },
+    ...
+]
+```
+
+### Step 2: Load Previous Snapshots
+
+**Purpose**: Establish baseline for delta computation
+
+**Data Source**: Supabase `weekly_pulse_digests` table
+
+**Query Logic**:
+- Find most recent digest for client
+- Extract snapshot data from `digest_data` JSON field
+- Build `Dict[sku_lane_key, snapshot]` for comparison
+
+**Output**:
+```python
 {
-  "directory_path": "/path/to/documents"
+    "WIDGET-001_US-CN": {
+        "tiles": {...},
+        "overall_risk_level": "medium",
+        "timestamp": "2024-01-08T00:00:00Z"
+    },
+    ...
 }
 ```
 
-### 2. Memory Analytics Pipeline (`memory_analytics_pipeline.py`)
+**Edge Case**: First run (no previous digest) returns empty dict
 
-Analyzes Mem0 memory usage patterns and generates actionable insights.
+### Step 3: Generate Current Snapshots
 
-**Steps:**
+**Purpose**: Create fresh compliance snapshots for all SKU+Lanes
 
-1. `fetch_user_memories` - Retrieve all memories for a user from Mem0
-2. `analyze_memory_patterns` - Compute statistics (count, types, avg length)
-3. `generate_insights` - Generate recommendations based on patterns
+**Execution**: Parallel processing using ComplianceService
 
-**Benefits:**
+**Performance**:
+- Processes multiple SKU+Lanes concurrently
+- Target: 100 SKU+Lanes in <15 minutes
+- Average: 5-10 seconds per SKU+Lane
 
-- Track memory growth over time
-- Identify memory quality issues
-- Monitor Mem0 usage patterns
-- Generate cleanup recommendations
+**Error Handling**:
+- Individual failures don't block pipeline
+- Failed SKU+Lanes logged and included in error summary
+- Partial results still generate digest
 
-**Usage:**
-
+**Output**:
 ```python
-from exim_agent.application.zenml_pipelines import memory_analytics_pipeline
-
-result = memory_analytics_pipeline(user_id="user-123")
-# Returns: {stats, insights, recommendations}
+{
+    "WIDGET-001_US-CN": {
+        "tiles": {
+            "hts": {...},
+            "sanctions": {...},
+            "refusals": {...},
+            "rulings": {...}
+        },
+        "overall_risk_level": "high",
+        "risk_score": 75.0,
+        "timestamp": "2024-01-15T00:00:00Z"
+    },
+    ...
+}
 ```
 
-**API Endpoint:**
+### Step 4: Compute Deltas
+
+**Purpose**: Identify changes at the tile level
+
+**Comparison Logic**:
+- Compare each tile's `status`, `risk_level`, and `headline`
+- Detect status changes: `clear` → `attention` → `action`
+- Detect risk escalations: `low` → `medium` → `high`
+- Identify new tiles (didn't exist in previous snapshot)
+
+**Change Categories**:
+- `risk_escalation`: Risk level increased
+- `new_requirement`: New compliance requirement detected
+- `status_change`: Tile status changed
+- `new_monitoring`: New tile added to snapshot
+
+**Output**:
+```python
+[
+    {
+        "sku_id": "WIDGET-001",
+        "lane_id": "US-CN",
+        "tile_type": "sanctions",
+        "change_type": "risk_escalation",
+        "previous_risk": "low",
+        "current_risk": "high",
+        "headline": "New sanctions match detected",
+        "priority": "high"
+    },
+    ...
+]
+```
+
+### Step 5: Rank by Impact
+
+**Purpose**: Prioritize changes for digest summary
+
+**Ranking Criteria**:
+1. Risk level (high > medium > low)
+2. Change type (risk_escalation > new_requirement > status_change)
+3. Tile type (sanctions > refusals > hts > rulings)
+4. Recency (newer changes prioritized)
+
+**Output**: Sorted list of changes with top 10 for digest
+
+### Step 6: Generate Digest
+
+**Purpose**: Create actionable summary for client
+
+**Digest Structure**:
+```python
+{
+    "client_id": "acme_corp",
+    "period_start": "2024-01-08T00:00:00Z",
+    "period_end": "2024-01-15T00:00:00Z",
+    "total_changes": 45,
+    "high_priority_changes": 8,
+    "medium_priority_changes": 22,
+    "low_priority_changes": 15,
+    "requires_action": True,
+    "status": "action_required",  # or "monitoring", "clear"
+    "summary": "8 high-priority compliance changes detected...",
+    "top_changes": [
+        {
+            "sku_id": "WIDGET-001",
+            "lane_id": "US-CN",
+            "change_type": "risk_escalation",
+            "headline": "New sanctions match detected",
+            "priority": "high",
+            "details": {...}
+        },
+        ...  # top 10 changes
+    ],
+    "snapshots": {
+        "WIDGET-001_US-CN": {...},
+        ...
+    },
+    "errors": {
+        "failed_sku_lanes": ["WIDGET-002_US-MX"],
+        "error_count": 1,
+        "success_rate": 0.95
+    },
+    "generated_at": "2024-01-15T10:30:00Z"
+}
+```
+
+### Step 7: Save Digest
+
+**Purpose**: Persist digest for retrieval and audit
+
+**Storage Locations**:
+
+1. **Supabase** (`weekly_pulse_digests` table):
+   - Full digest JSON in `digest_data` field
+   - Metadata fields for querying (client_id, period_end, requires_action)
+   - Historical tracking and audit trail
+
+2. **ChromaDB** (`compliance_events` collection):
+   - Digest summary indexed for semantic search
+   - Enables "What changed last week?" queries
+   - Metadata: client_id, period_end, status
+
+**Cleanup**: Old digests (>90 days) can be archived
+
+## Pipeline Configuration
+
+### Environment Variables
 
 ```bash
-POST /pipelines/analytics?user_id=user-123
+# ZenML Configuration
+ZENML_STORE_URL=http://localhost:8080  # optional, uses local if not set
+
+# Supabase (required)
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_SERVICE_KEY=xxx
+
+# ChromaDB (required)
+CHROMA_PERSIST_DIRECTORY=./data/chroma_db
+
+# LLM Provider (required)
+OPENAI_API_KEY=sk-...
+
+# Compliance APIs (required for real data)
+CSL_API_KEY=xxx  # ITA Consolidated Screening List
+
+# Performance Tuning
+MAX_PARALLEL_SNAPSHOTS=10
+SNAPSHOT_TIMEOUT_SECONDS=30
+TOOL_TIMEOUT_SECONDS=10
 ```
 
-**Why No Distillation/Promotion Pipelines?**
-
-Mem0 handles these automatically:
-
-- **Distillation**: Mem0 extracts and stores memories from conversations
-- **Promotion**: Mem0 manages memory lifecycle and relevance scoring
-- **Cleanup**: Mem0 handles memory retention policies
-
-These pipelines are unnecessary with Mem0's built-in memory management.
-
-## Unified Runner
-
-The `runner.py` module provides a unified interface:
+### Pipeline Parameters
 
 ```python
-from exim_agent.application.zenml_pipelines.runner import pipeline_runner
-
-# Run ingestion pipeline
-pipeline_runner.run_ingestion(directory_path="/path")
-
-# Run memory analytics pipeline
-pipeline_runner.run_memory_analytics(user_id="user-123")
+@pipeline
+def weekly_pulse_pipeline(
+    client_id: str,
+    period_days: int = 7,
+    parallel_workers: int = 10,
+    include_errors: bool = True
+):
+    ...
 ```
 
-## Graceful Degradation
+## Execution Modes
 
-The ingestion pipeline includes fallback to existing services if ZenML is unavailable:
+### 1. On-Demand Execution
 
-- `run_ingestion_pipeline` → `ingest_service.ingest_documents_from_directory()`
+Run pipeline manually for testing or ad-hoc needs:
 
-This ensures backward compatibility and allows the system to function even if ZenML dependencies have issues.
+```bash
+# Via Python script
+python scripts/run_pulse.py --client-id acme_corp --weekly
 
-## ZenML Setup (Optional)
+# Via API
+curl -X POST http://localhost:8000/compliance/pulse/acme_corp/weekly
+```
 
-To enable full ZenML features:
+### 2. Scheduled Execution
 
-1. **Install dependencies** (already in pyproject.toml):
+#### Using Cron
 
-   ```bash
-   uv sync
-   ```
+```bash
+# Weekly pulse every Monday at 6 AM
+0 6 * * 1 cd /app && python scripts/run_pulse.py --client-id acme_corp --weekly
 
-2. **Initialize ZenML** (when dependency issues are resolved):
+# Daily pulse every day at 6 AM
+0 6 * * * cd /app && python scripts/run_pulse.py --client-id acme_corp --daily
+```
 
-   ```bash
-   zenml init
-   zenml stack set default
-   ```
+#### Using ZenML Schedules
 
-3. **Start MLflow** (for experiment tracking):
+```python
+from zenml.pipelines import Schedule
 
-   ```bash
-   mlflow server --host 127.0.0.1 --port 5000
-   ```
+schedule = Schedule(cron_expression="0 6 * * 1")  # Every Monday at 6 AM
 
-4. **Configure stack** (optional, for production):
+weekly_pulse_pipeline.run(
+    schedule=schedule,
+    client_id="acme_corp"
+)
+```
 
-   ```bash
-   zenml stack create production \
-     --orchestrator kubernetes \
-     --artifact-store s3 \
-     --experiment-tracker mlflow
-   ```
+### 3. Event-Driven Execution
 
-## Current Status
+Trigger pipeline on specific events:
 
-✅ **Ingestion Pipeline**: Fully implemented and functional  
-✅ **Memory Analytics Pipeline**: Fully implemented and functional  
-✅ **Graceful fallback**: Falls back to existing services if ZenML unavailable  
-✅ **API endpoints**: Integrated with FastAPI  
-✅ **ZenML initialized**: Local stack configured and operational  
-⏳ **Testing**: Pipelines need end-to-end testing  
-⏳ **MLflow**: Experiment tracking not yet configured  
+```python
+# Trigger on new compliance data ingestion
+@event_trigger(event_type="compliance_data_updated")
+def on_compliance_update(event):
+    weekly_pulse_pipeline.run(
+        client_id=event.client_id,
+        period_days=1  # daily pulse
+    )
+```
 
-## Notes
+## Monitoring and Observability
 
-- Pipelines follow existing design patterns (no unnecessary directories/files)
-- Code reuses existing services (no duplication)
-- Backward compatible with non-ZenML mode
-- Ready for MLOps when ZenML is fully operational
+### Pipeline Metrics
 
-## Integration Points
+Tracked in `pipeline_execution_metrics` table:
 
-### FastAPI Routes
+- **Execution Time**: Total pipeline duration
+- **SKU+Lane Counts**: Total, successful, failed
+- **Tool Stats**: Calls, successes, failures, avg duration
+- **Digest Stats**: Total changes, high-priority count
+- **Success Rate**: Percentage of successful snapshots
 
-New routes added to `infrastructure/api/main.py`:
+### Logging
 
-- `POST /pipelines/ingest` - ZenML ingestion pipeline
-- `POST /pipelines/analytics` - Memory analytics pipeline
-- `GET /pipelines/status` - Check ZenML availability
+Structured logs with correlation IDs:
 
-### Health Check
+```python
+logger.info(
+    "Pipeline started",
+    extra={
+        "correlation_id": "pulse_123",
+        "client_id": "acme_corp",
+        "period_days": 7
+    }
+)
+```
 
-`GET /health` now includes `zenml` field showing ZenML availability.
+### ZenML Dashboard
 
-### Existing Routes
+View pipeline runs, artifacts, and lineage:
 
-Original routes remain unchanged for compatibility:
+```bash
+zenml up  # Start ZenML dashboard
+# Navigate to http://localhost:8080
+```
 
-- `POST /ingest-documents` - Direct ingestion (non-ZenML)
-- `POST /memory/*` - Mem0 memory management routes
+## Error Handling
+
+### Graceful Degradation
+
+1. **Tool Failures**: Use fallback data, continue pipeline
+2. **Snapshot Failures**: Log error, continue with other SKU+Lanes
+3. **Storage Failures**: Log error, return digest (don't block)
+4. **ChromaDB Failures**: Log warning, skip indexing (non-critical)
+
+### Error Aggregation
+
+Digest includes error summary:
+
+```python
+"errors": {
+    "failed_sku_lanes": ["WIDGET-002_US-MX"],
+    "error_messages": {
+        "WIDGET-002_US-MX": "Tool timeout: HTSTool"
+    },
+    "error_count": 1,
+    "success_rate": 0.95,
+    "tool_failures": {
+        "hts": 1,
+        "sanctions": 0,
+        "refusals": 0,
+        "rulings": 0
+    }
+}
+```
+
+## Performance Optimization
+
+### Parallel Processing
+
+```python
+# Process SKU+Lanes in parallel
+with ThreadPoolExecutor(max_workers=10) as executor:
+    futures = [
+        executor.submit(generate_snapshot, sku_lane)
+        for sku_lane in sku_lanes
+    ]
+    results = [f.result() for f in futures]
+```
+
+### Caching
+
+- Tool results cached in Supabase (24-hour TTL)
+- Previous snapshots cached for delta computation
+- ChromaDB query results cached (5-minute TTL)
+
+### Batching
+
+- Batch Supabase writes (100 records per batch)
+- Batch ChromaDB indexing (50 documents per batch)
+
+## Testing
+
+### Unit Tests
+
+```bash
+pytest tests/test_weekly_pulse.py -v
+```
+
+### Integration Tests
+
+```bash
+pytest tests/test_pulse_pipeline_integration.py -v --integration
+```
+
+### Performance Tests
+
+```bash
+pytest tests/test_pulse_performance.py -v --benchmark
+```
+
+## Troubleshooting
+
+### Pipeline Fails to Start
+
+- Check ZenML connection: `zenml status`
+- Verify environment variables: `zenml stack describe`
+- Check Supabase connectivity: `curl $SUPABASE_URL/rest/v1/`
+
+### Slow Pipeline Execution
+
+- Increase `MAX_PARALLEL_SNAPSHOTS`
+- Check tool API response times
+- Verify ChromaDB performance
+- Review network latency
+
+### Missing Previous Snapshots
+
+- Verify digest exists in Supabase: `SELECT * FROM weekly_pulse_digests WHERE client_id = 'xxx'`
+- Check digest_data JSON structure
+- Ensure period_end matches expected format
+
+### High Error Rate
+
+- Check tool API availability
+- Verify API keys are valid
+- Review tool timeout settings
+- Check network connectivity
+
+## Related Documentation
+
+- [Compliance Service README](../compliance_service/README.md) - Snapshot generation
+- [Domain Tools README](../../domain/tools/README.md) - Tool architecture
+- [Database README](../../infrastructure/db/README.md) - Storage architecture
+- [PULSE_PIPELINE_MVP.md](../../../docs/PULSE_PIPELINE_MVP.md) - Product requirements
