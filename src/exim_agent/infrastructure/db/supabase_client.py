@@ -249,6 +249,40 @@ class SupabaseClient:
             logger.error(f"Failed to retrieve memory analytics: {e}")
             return []
 
+    def get_client_portfolio(
+        self,
+        client_id: str,
+        active_only: bool = True
+    ) -> List[Dict[str, str]]:
+        """
+        Retrieve client's SKU+Lane portfolio from database.
+        
+        Args:
+            client_id: Client identifier
+            active_only: Only return active SKU+Lane combinations (default True)
+            
+        Returns:
+            List of {sku_id, lane_id, hts_code} dicts
+        """
+        if not self._client:
+            logger.warning("Supabase client not available - returning empty portfolio")
+            return []
+        
+        try:
+            query = self._client.table("client_portfolios").select("sku_id, lane_id, hts_code").eq("client_id", client_id)
+            
+            if active_only:
+                query = query.eq("active", True)
+            
+            result = query.order("sku_id").execute()
+            
+            logger.info(f"Retrieved {len(result.data)} SKU+Lane combinations for client {client_id}")
+            return result.data
+            
+        except Exception as e:
+            logger.error(f"Failed to retrieve client portfolio: {e}")
+            return []
+
     def health_check(self) -> bool:
         """Check if Supabase connection is healthy."""
         if not self._client:

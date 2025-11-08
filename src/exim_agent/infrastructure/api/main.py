@@ -14,6 +14,7 @@ from exim_agent.domain.exceptions import DocumentIngestionError
 from exim_agent.infrastructure.db.chroma_client import chroma_client
 from exim_agent.infrastructure.db.compliance_collections import compliance_collections
 from exim_agent.infrastructure.llm_providers.langchain_provider import get_embeddings, get_llm
+from exim_agent.infrastructure.http_client import shutdown_http_clients
 from exim_agent.config import config
 
 # ZenML pipelines
@@ -66,6 +67,11 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("Shutting down Agent API...")
+    try:
+        await shutdown_http_clients()
+        logger.info("HTTP clients shutdown complete")
+    except Exception as e:
+        logger.error(f"Error shutting down HTTP clients: {e}")
 
 
 app = FastAPI(

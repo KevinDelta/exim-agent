@@ -145,6 +145,105 @@ class TestComplianceWeeklyPulse:
             assert "timestamp" in change
 
 
+class TestComplianceDailyPulse:
+    """Tests for /compliance/pulse/{client_id}/daily endpoint."""
+    
+    def test_get_daily_pulse_success(self, client):
+        """Test successful daily pulse retrieval."""
+        response = client.get("/compliance/pulse/test_client/daily")
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data["success"] is True
+        assert data["client_id"] == "test_client"
+        assert "period_start" in data
+        assert "period_end" in data
+        assert "summary" in data
+        assert "changes" in data
+    
+    def test_daily_pulse_with_date_range(self, client):
+        """Test daily pulse with date range filtering."""
+        response = client.get(
+            "/compliance/pulse/test_client/daily",
+            params={
+                "start_date": "2024-01-01",
+                "end_date": "2024-01-31"
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data["client_id"] == "test_client"
+    
+    def test_daily_pulse_requires_action_filter(self, client):
+        """Test daily pulse with requires_action filter."""
+        response = client.get(
+            "/compliance/pulse/test_client/daily",
+            params={"requires_action_only": True}
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data["client_id"] == "test_client"
+    
+    def test_daily_pulse_metadata_includes_period_type(self, client):
+        """Test that daily pulse metadata indicates period type."""
+        response = client.get("/compliance/pulse/test_client/daily")
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        if data["success"] and data.get("metadata"):
+            metadata = data["metadata"]
+            assert metadata.get("period_type") == "daily"
+    
+    def test_daily_pulse_limit_parameter(self, client):
+        """Test daily pulse with limit parameter."""
+        response = client.get(
+            "/compliance/pulse/test_client/daily",
+            params={"limit": 5}
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data["client_id"] == "test_client"
+
+
+class TestComplianceLatestPulse:
+    """Tests for /compliance/pulse/{client_id}/latest endpoint."""
+    
+    def test_get_latest_pulse_success(self, client):
+        """Test successful latest pulse retrieval."""
+        response = client.get("/compliance/pulse/test_client/latest")
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data["success"] is True
+        assert data["client_id"] == "test_client"
+        assert "period_start" in data
+        assert "period_end" in data
+        assert "summary" in data
+        assert "changes" in data
+    
+    def test_latest_pulse_metadata_includes_period_type(self, client):
+        """Test that latest pulse metadata indicates period type and latest flag."""
+        response = client.get("/compliance/pulse/test_client/latest")
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        if data["success"] and data.get("metadata"):
+            metadata = data["metadata"]
+            assert "period_type" in metadata
+            assert metadata.get("is_latest") is True
+            assert metadata["period_type"] in ["daily", "weekly", "unknown"]
+
+
 class TestComplianceAsk:
     """Tests for /compliance/ask endpoint."""
     

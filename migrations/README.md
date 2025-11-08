@@ -50,6 +50,8 @@ uv run python scripts/run_migrations.py
 |------|-------------|--------|------|
 | `001_create_weekly_pulse_digests.sql` | Creates weekly_pulse_digests table for compliance pulse storage | **Required** | 2025-11-01 |
 | `002_create_memory_analytics_table.sql` | Creates memory_analytics table for Mem0 usage tracking | **Optional** | 2025-11-01 |
+| `003_add_crawling_support.sql` | Adds crawling metadata and audit log tables | **Optional** | 2025-11-01 |
+| `004_create_client_portfolios.sql` | Creates client_portfolios table for SKU+Lane configurations | **Required** | 2025-11-07 |
 
 ## Table Structure
 
@@ -76,6 +78,30 @@ Primary storage for weekly compliance pulse digests.
 - GIN index for JSON queries
 
 **Row Level Security**: Enabled for multi-tenant isolation
+
+### `client_portfolios`
+
+Stores client SKU+Lane portfolio configurations for compliance monitoring.
+
+**Purpose**: Define which SKU+Lane combinations each client monitors in the pulse pipeline.
+
+**Key Fields**:
+
+- `client_id`: Client identifier
+- `sku_id`: Stock Keeping Unit identifier
+- `lane_id`: Trade lane identifier (e.g., CNSHA-USLAX-ocean)
+- `hts_code`: Harmonized Tariff Schedule code
+- `active`: Whether this SKU+Lane is actively monitored
+
+**Indexes**:
+
+- Fast queries by client + active status
+- Indexes on sku_id, lane_id, hts_code for lookups
+- Unique constraint on (client_id, sku_id, lane_id)
+
+**Row Level Security**: Enabled for multi-tenant isolation
+
+**Sample Data**: Includes test data for `test-client-001` with 5 SKU+Lane combinations
 
 ### `memory_analytics` (Optional)
 
