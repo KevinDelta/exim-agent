@@ -15,7 +15,7 @@ The Compliance Service is the core component responsible for generating complian
 
 The service uses **LangGraph** to implement a state machine that processes compliance requests through multiple stages:
 
-```
+```yaml
 Input (client_id, sku_id, lane_id, question?)
     ↓
 Execute Tools (parallel)
@@ -36,12 +36,14 @@ Main service class with two primary methods:
 #### `snapshot(client_id: str, sku_id: str, lane_id: str) -> Dict`
 
 Generates a comprehensive compliance snapshot containing:
+
 - **Tiles**: Individual compliance aspects (HTS, sanctions, refusals, rulings)
 - **Overall Risk Level**: Aggregated risk assessment (low/medium/high)
 - **Risk Score**: Numerical risk value (0-100)
 - **Sources**: Evidence and citations supporting the assessment
 
 **Example Response**:
+
 ```python
 {
     "success": True,
@@ -68,11 +70,13 @@ Generates a comprehensive compliance snapshot containing:
 #### `ask(client_id: str, question: str, sku_id: str, lane_id: str) -> Dict`
 
 Answers compliance questions using RAG:
+
 - Executes relevant tools based on question context
 - Retrieves supporting documents from ChromaDB
 - Generates natural language answer with citations
 
 **Example Response**:
+
 ```python
 {
     "success": True,
@@ -92,6 +96,7 @@ LangGraph state machine with four nodes:
 4. **answer_question_node**: Generates natural language answers for Q&A mode
 
 **State Schema**:
+
 ```python
 class ComplianceState(TypedDict):
     # Input
@@ -155,23 +160,27 @@ if result["success"]:
 ## Integration Points
 
 ### Domain Tools
+
 - **HTSTool**: Fetches tariff classification and duty rates
 - **SanctionsTool**: Checks consolidated screening lists
 - **RefusalsTool**: Queries FDA/FSIS import refusals
 - **RulingsTool**: Retrieves CBP customs rulings
 
 All tools support:
+
 - Parallel execution for performance
 - Automatic fallback to mock data on API failures
 - Result caching in Supabase
 
 ### ChromaDB Collections
+
 - `compliance_policy_snippets`: General compliance documents
 - `compliance_hts_notes`: HTS-specific information
 - `compliance_rulings`: CBP rulings database
 - `compliance_refusal_summaries`: Import refusal data
 
 ### Supabase Storage
+
 - Tool outputs stored in `compliance_data` table
 - Snapshots can be persisted for historical tracking
 - Supports audit trail and compliance reporting
@@ -195,6 +204,7 @@ The service implements graceful degradation:
 ## Configuration
 
 Environment variables:
+
 ```bash
 # LLM Provider
 OPENAI_API_KEY=sk-...
@@ -212,11 +222,13 @@ CSL_API_KEY=xxx  # ITA Consolidated Screening List
 ## Testing
 
 Run compliance service tests:
+
 ```bash
 pytest tests/test_compliance_service.py -v
 ```
 
 Integration tests with real APIs:
+
 ```bash
 pytest tests/test_compliance_service.py -v --integration
 ```

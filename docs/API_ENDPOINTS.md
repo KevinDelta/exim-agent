@@ -404,36 +404,6 @@ const headers = {
 }
 ```
 
-## ZenML Pipeline Endpoints
-
-### 1. Run Compliance Ingestion
-
-**Endpoint:** `POST /pipelines/compliance-ingestion`
-
-**Purpose:** Trigger compliance data ingestion pipeline
-
-**Request:**
-
-```typescript
-{
-  "lookback_days": 7  // Days to look back for updates
-}
-```
-
-### 2. Run Memory Analytics
-
-**Endpoint:** `POST /pipelines/analytics`
-
-**Purpose:** Analyze Mem0 usage patterns and optimize memory
-
-**Request:**
-
-```typescript
-{
-  "user_id": "user123"
-}
-```
-
 ## Integration Examples
 
 ### Complete Compliance Workflow

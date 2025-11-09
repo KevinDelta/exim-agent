@@ -4,7 +4,7 @@
 
 The database infrastructure provides a dual-storage architecture optimized for different data access patterns. Supabase serves as the primary transactional database for long-term storage and audit trails, while ChromaDB provides vector search capabilities for semantic retrieval and short-term memory.
 
-## Purpose
+## Purpose1
 
 - **Long-term Storage**: Persist compliance data, digests, and analytics in Supabase
 - **Vector Search**: Enable semantic search and RAG context retrieval via ChromaDB
@@ -14,7 +14,7 @@ The database infrastructure provides a dual-storage architecture optimized for d
 
 ## Storage Architecture
 
-```
+```yaml
 ┌─────────────────────────────────────────────────────────────┐
 │                     Application Layer                        │
 └─────────────────────────────────────────────────────────────┘
@@ -74,6 +74,7 @@ CREATE INDEX idx_compliance_data_updated ON compliance_data(updated_at DESC);
 ```
 
 **Usage**:
+
 - Cache tool results (24h TTL)
 - Track data changes over time
 - Audit trail for compliance
@@ -107,6 +108,7 @@ CREATE INDEX idx_pulse_status ON weekly_pulse_digests(status);
 ```
 
 **Usage**:
+
 - Store pulse digests for retrieval
 - Track compliance trends over time
 - Support digest history queries
@@ -135,6 +137,7 @@ CREATE INDEX idx_portfolio_sku ON client_portfolios(sku_id);
 ```
 
 **Usage**:
+
 - Define monitoring scope for pulse pipelines
 - Support portfolio management UI
 - Track active vs inactive products
@@ -160,6 +163,7 @@ CREATE INDEX idx_memory_analytics_user ON memory_analytics(user_id, analyzed_at 
 ```
 
 **Usage**:
+
 - Track conversation patterns
 - Monitor memory system health
 - Generate user insights
@@ -210,7 +214,7 @@ portfolio = client.get_client_portfolio(
 
 ## ChromaDB (Short-term Memory)
 
-### Purpose
+### Purpose3
 
 ChromaDB provides **vector search** for semantic retrieval:
 
@@ -226,7 +230,8 @@ ChromaDB provides **vector search** for semantic retrieval:
 General compliance policy documents and regulations.
 
 **Metadata Schema**:
-```python
+
+```json
 {
     "doc_type": "policy",
     "source": "CBP",
@@ -243,7 +248,8 @@ General compliance policy documents and regulations.
 HTS code descriptions and tariff information.
 
 **Metadata Schema**:
-```python
+
+```json
 {
     "hts_code": "8471.30.01",
     "duty_rate": "0%",
@@ -260,7 +266,8 @@ HTS code descriptions and tariff information.
 CBP customs rulings and interpretations.
 
 **Metadata Schema**:
-```python
+
+```json
 {
     "ruling_number": "N123456",
     "hts_code": "8471.30.01",
@@ -277,7 +284,8 @@ CBP customs rulings and interpretations.
 FDA/FSIS import refusal summaries.
 
 **Metadata Schema**:
-```python
+
+```json
 {
     "hts_code": "0201.10.00",
     "refusal_reason": "Salmonella",
@@ -294,7 +302,8 @@ FDA/FSIS import refusal summaries.
 Historical compliance events and digest summaries.
 
 **Metadata Schema**:
-```python
+
+```json
 {
     "event_type": "digest",
     "client_id": "acme_corp",
@@ -311,7 +320,8 @@ Historical compliance events and digest summaries.
 Conversation memories managed by Mem0.
 
 **Metadata Schema**:
-```python
+
+```json
 {
     "user_id": "user_123",
     "session_id": "sess_456",
@@ -391,7 +401,7 @@ context = collections.get_compliance_context(
 
 ### Pattern 1: Tool Execution with Caching
 
-```
+```yaml
 Tool.run()
     ↓
 Check Supabase Cache
@@ -409,7 +419,7 @@ Return Result
 
 ### Pattern 2: Pulse Digest Generation
 
-```
+```yaml
 Generate Snapshots
     ↓
 Compute Deltas
@@ -425,7 +435,7 @@ Return Digest
 
 ### Pattern 3: Chat Q&A
 
-```
+```yaml
 User Question
     ↓
 Retrieve from ChromaDB (RAG context)
@@ -441,7 +451,7 @@ Return Answer
 
 ### Pattern 4: Compliance Data Ingestion
 
-```
+```yaml
 Crawl External Source
     ↓
 Store Raw Data in Supabase
@@ -576,12 +586,14 @@ tar -xzf chroma_backup_20240115.tar.gz
 ### Metrics to Track
 
 **Supabase**:
+
 - Query latency (P50, P95, P99)
 - Connection pool usage
 - Table sizes and growth rate
 - Cache hit rate
 
 **ChromaDB**:
+
 - Search latency
 - Collection sizes
 - Embedding generation time
@@ -634,11 +646,13 @@ pytest tests/test_db_integration.py -v --integration
 ### Supabase Issues
 
 **Connection Errors**:
+
 - Check `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`
 - Verify network connectivity
 - Check connection pool limits
 
 **Slow Queries**:
+
 - Review query execution plans
 - Add missing indexes
 - Optimize JSONB queries
@@ -646,15 +660,18 @@ pytest tests/test_db_integration.py -v --integration
 ### ChromaDB Issues
 
 **Collection Not Found**:
+
 - Run `initialize_collections()`
 - Check persist directory permissions
 
 **Slow Searches**:
+
 - Reduce collection size
 - Use metadata filtering
 - Increase `n_results` limit
 
 **Memory Issues**:
+
 - Reduce collection sizes
 - Clear old embeddings
 - Increase system memory
@@ -681,6 +698,6 @@ pytest tests/test_db_integration.py -v --integration
 
 - [Compliance Service README](../../application/compliance_service/README.md) - Storage usage patterns
 - [Domain Tools README](../../domain/tools/README.md) - Caching strategy
-- [ZenML Pipelines README](../../application/zenml_pipelines/README.md) - Digest storage
+- [MVP De-bloat Review](../../../docs/MVP_DEBLOAT_REVIEW.md) - Digest storage changes
 - [Supabase Documentation](https://supabase.com/docs)
 - [ChromaDB Documentation](https://docs.trychroma.com/)

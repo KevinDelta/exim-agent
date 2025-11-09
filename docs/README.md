@@ -2,7 +2,7 @@
 
 ## Overview
 
-This documentation covers the integrated compliance workflow that combines real-time compliance analysis with context-aware chat functionality. The system provides a seamless user experience backed by sophisticated AI services including LangGraph, Mem0, ChromaDB, and ZenML.
+This documentation covers the integrated compliance workflow that combines real-time compliance analysis with context-aware chat functionality. The system provides a seamless user experience backed by sophisticated AI services including LangGraph, Mem0, and ChromaDB.
 
 ## 📚 Documentation Structure
 
@@ -55,8 +55,7 @@ graph TB
         TOOLS[Domain Tools<br/>HTS, Sanctions, etc.]
     end
     
-    subgraph "ML Pipeline"
-        ZENML[ZenML<br/>Data Pipelines]
+    subgraph "Model Providers"
         LLM[LLM Providers<br/>OpenAI, Anthropic, Groq]
     end
     
@@ -75,9 +74,6 @@ graph TB
     
     COMP_GRAPH --> LLM
     CHAT_GRAPH --> LLM
-    
-    ZENML --> CHROMA
-    ZENML --> MEM0
 ```
 
 ## 🔄 Integration Flow
@@ -126,7 +122,7 @@ User Question + Compliance Context
 ### Enterprise Ready
 
 - **Scalable Architecture** - Microservices with shared data layer
-- **MLOps Integration** - ZenML for data pipeline management
+- **Digest Service** - On-demand weekly/daily compliance pulses
 - **Comprehensive Monitoring** - Health checks and observability
 - **Security First** - Authentication, authorization, and data protection
 
@@ -140,7 +136,7 @@ Comprehensive explanation of how the frontend connects to all backend services:
 - **Chat Graph Service** - Context-aware conversational AI
 - **ChromaDB Integration** - Shared vector storage for documents and memory
 - **Mem0 Integration** - Intelligent conversational memory
-- **ZenML Pipelines** - Data ingestion and model training workflows
+- **Supabase Digests** - Optional persistence for weekly/daily pulses
 
 ### [Frontend Architecture](./FRONTEND_ARCHITECTURE.md)
 
@@ -214,7 +210,7 @@ Production deployment strategies and configurations:
 2. **Container Build** - Build Docker images for backend and frontend
 3. **Service Deployment** - Deploy using docker-compose or Kubernetes
 4. **Health Verification** - Confirm all services are healthy
-5. **Data Pipeline Setup** - Configure ZenML pipelines for data ingestion
+5. **Digest Persistence Setup** - Configure Supabase tables for pulse history
 
 ## 🔍 Troubleshooting
 

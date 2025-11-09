@@ -14,10 +14,3 @@ client = chromadb.PersistentClient(path='/app/data/chroma_db'); \
 collections = client.list_collections(); \
 print('ChromaDB Collections:'); \
 [print(f'  - {col.name}: {col.count()} documents') for col in collections]"
-
-zenml-pipelines:  
-	 
-	zenml init              
-	zenml stack list        
-	zenml pipeline runs list 
-	  

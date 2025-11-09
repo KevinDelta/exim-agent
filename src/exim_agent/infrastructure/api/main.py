@@ -17,15 +17,6 @@ from exim_agent.infrastructure.llm_providers.langchain_provider import get_embed
 from exim_agent.infrastructure.http_client import shutdown_http_clients
 from exim_agent.config import config
 
-# ZenML pipelines
-try:
-    from exim_agent.application.zenml_pipelines.runner import pipeline_runner
-    ZENML_PIPELINES_AVAILABLE = True
-except ImportError:
-    logger.warning("ZenML pipelines not available - /pipelines/* endpoints disabled")
-    ZENML_PIPELINES_AVAILABLE = False
-    pipeline_runner = None
-
 # Models
 from .models import (
     ChatRequest,
@@ -40,10 +31,6 @@ from .models import (
 from .routes.memory_routes import router as memory_router
 # Compliance routes
 from .routes.compliance_routes import router as compliance_router
-# Admin routes
-from .routes.admin_routes import router as admin_router
-# Crawling routes
-from .routes.crawl_routes import router as crawl_router
 
 
 @asynccontextmanager
@@ -94,10 +81,6 @@ app.add_middleware(
 app.include_router(memory_router)
 # Include Compliance routes
 app.include_router(compliance_router)
-# Include Admin routes
-app.include_router(admin_router)
-# Include Crawling routes
-app.include_router(crawl_router)
 
 
 @app.get("/")
@@ -243,7 +226,6 @@ async def health_check():
                 "langgraph": True,
                 "mem0": config.mem0_enabled,
                 "reranking": config.enable_reranking,
-                "zenml": ZENML_PIPELINES_AVAILABLE,
                 "compliance": True,
             },
             "rag_documents": rag_stats,
@@ -255,163 +237,6 @@ async def health_check():
             "status": "unhealthy",
             "error": str(e)
         }
-
-
-# ZenML Pipeline Endpoints
-
-@app.post("/pipelines/ingest")
-async def run_ingestion_pipeline(request: IngestDocumentsRequest):
-    """
-    Run document ingestion via ZenML pipeline.
-    
-    Provides MLOps benefits:
-    - Artifact caching
-    - Experiment tracking
-    - Full lineage tracking
-    - Versioning of pipeline runs
-    """
-    if not ZENML_PIPELINES_AVAILABLE:
-        raise HTTPException(
-            status_code=503,
-            detail="ZenML pipelines not available. Use /ingest-documents instead."
-        )
-    
-    try:
-        logger.info(f"Running ZenML ingestion pipeline: {request}")
-        
-        result = pipeline_runner.run_ingestion(
-            directory_path=request.directory_path or request.file_path
-        )
-        
-        return {
-            "success": result.get("status") == "success",
-            "result": result,
-            "pipeline_type": "zenml"
-        }
-        
-    except Exception as e:
-        logger.error(f"ZenML ingestion pipeline failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/pipelines/analytics")
-async def run_analytics_pipeline(user_id: str):
-    """
-    Run memory analytics pipeline.
-    
-    Analyzes Mem0 usage patterns and generates insights.
-    """
-    if not ZENML_PIPELINES_AVAILABLE:
-        raise HTTPException(
-            status_code=503,
-            detail="ZenML pipelines not available."
-        )
-    
-    try:
-        logger.info(f"Running memory analytics pipeline for user: {user_id}")
-        
-        result = pipeline_runner.run_memory_analytics(user_id=user_id)
-        
-        return {
-            "success": result.get("status") == "success",
-            "result": result,
-            "pipeline_type": "zenml"
-        }
-        
-    except Exception as e:
-        logger.error(f"Memory analytics pipeline failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/pipelines/compliance-ingestion")
-async def run_compliance_ingestion_pipeline(lookback_days: int = 7):
-    """
-    Run compliance data ingestion pipeline.
-    
-    Fetches and ingests updates from:
-    - HTS codes and notes
-    - Sanctions lists
-    - Import refusals
-    - CBP rulings
-    """
-    if not ZENML_PIPELINES_AVAILABLE:
-        raise HTTPException(
-            status_code=503,
-            detail="ZenML pipelines not available."
-        )
-    
-    try:
-        logger.info(f"Running compliance ingestion pipeline (lookback: {lookback_days} days)")
-        
-        result = pipeline_runner.run_compliance_ingestion(
-            lookback_days=lookback_days
-        )
-        
-        return {
-            "success": result.get("status") == "success",
-            "result": result,
-            "pipeline_type": "zenml"
-        }
-        
-    except Exception as e:
-        logger.error(f"Compliance ingestion pipeline failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/pipelines/weekly-pulse")
-async def run_weekly_pulse_pipeline(client_id: str, period_days: int = 7):
-    """
-    Run weekly compliance pulse generation pipeline.
-    
-    Generates comprehensive weekly digest with:
-    - New requirements
-    - Risk escalations
-    - Delta analysis
-    - Action items
-    """
-    if not ZENML_PIPELINES_AVAILABLE:
-        raise HTTPException(
-            status_code=503,
-            detail="ZenML pipelines not available."
-        )
-    
-    try:
-        logger.info(f"Running weekly pulse pipeline for client: {client_id}")
-        
-        result = pipeline_runner.run_weekly_pulse(
-            client_id=client_id,
-            period_days=period_days
-        )
-        
-        return {
-            "success": result.get("status") == "success",
-            "result": result,
-            "pipeline_type": "zenml"
-        }
-        
-    except Exception as e:
-        logger.error(f"Weekly pulse pipeline failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/pipelines/status")
-async def get_pipelines_status():
-    """Get status of ZenML pipelines integration."""
-    return {
-        "zenml_available": ZENML_PIPELINES_AVAILABLE,
-        "pipelines": {
-            "ingestion": ZENML_PIPELINES_AVAILABLE,
-            "analytics": ZENML_PIPELINES_AVAILABLE,
-            "compliance_ingestion": ZENML_PIPELINES_AVAILABLE,
-            "weekly_pulse": ZENML_PIPELINES_AVAILABLE,
-        },
-        "endpoints": {
-            "ingest": "/pipelines/ingest",
-            "analytics": "/pipelines/analytics",
-            "compliance_ingestion": "/pipelines/compliance-ingestion",
-            "weekly_pulse": "/pipelines/weekly-pulse",
-        } if ZENML_PIPELINES_AVAILABLE else {}
-    }
 
 
 if __name__ == "__main__":

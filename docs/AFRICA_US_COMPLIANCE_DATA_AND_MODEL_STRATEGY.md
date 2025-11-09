@@ -4,7 +4,7 @@ Last updated: 2025-11-06
 
 Scope: Technical, implementation-focused guidance to (1) identify and ingest the most authoritative, up-to-date compliance and risk sources for Africa↔US trade (HTS classification, sanctions, export controls, import safety, rules of origin, and trade-lane risk signals), and (2) outline a concrete plan to transition our agents to fine‑tuned open models using Hugging Face and Unsloth.
 
-This complements: `compliance_pulse_ingestion_runbook.md`, `docs/COMPLIANCE_INTEGRATION.md`, and `crawl4ai.md`.
+This complements: `compliance_pulse_ingestion_runbook.md` and `docs/COMPLIANCE_INTEGRATION.md`.
 
 ---
 
@@ -381,7 +381,6 @@ Automate with a small script that performs HEAD/GET with retry and records statu
 - Sanctions tool using CSL (replace mocks): `src/exim_agent/domain/tools/sanctions_tool.py`
 - Ingestion runbook with schemas: `compliance_pulse_ingestion_runbook.md`
 - Integration guide (LangGraph/Chroma/Mem0): `docs/COMPLIANCE_INTEGRATION.md`
-- Crawling helper example: `crawl4ai.md`
 
 ---
 
