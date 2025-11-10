@@ -141,26 +141,26 @@ def generate_snapshot_node(state: ComplianceState) -> ComplianceState:
     citations = []
     
     # HTS Tile
-    if state.get("hts_results", {}).get("success"):
-        hts_data = state["hts_results"].get("data", {})
+    if (hts := state.get("hts_results")) and hts.get("success"):
+        data = hts.get("data", {})
         
         tiles["hts"] = Tile(
             status=TileStatus.CLEAR,
-            headline=f"HTS {hts_data.get('hts_code', 'N/A')} - {hts_data.get('duty_rate', 'N/A')}",
-            details_md=f"**Description:** {hts_data.get('description', 'N/A')}\n**Duty Rate:** {hts_data.get('duty_rate', 'N/A')}"
+            headline=f"HTS {data.get('hts_code', 'N/A')} - {data.get('duty_rate', 'N/A')}",
+            details_md=f"**Description:** {data.get('description', 'N/A')}\n**Duty Rate:** {data.get('duty_rate', 'N/A')}"
         ).model_dump()
         
         citations.append(Evidence(
             source="USITC HTS Database",
-            url=hts_data.get("source_url", ""),
-            snippet=hts_data.get("description", ""),
-            last_updated=hts_data.get("last_updated", "")
+            url=data.get("source_url", ""),
+            snippet=data.get("description", ""),
+            last_updated=data.get("last_updated", "")
         ))
     
     # Sanctions Tile
-    if state.get("sanctions_results", {}).get("success"):
-        sanctions_data = state["sanctions_results"].get("data", {})
-        matches_found = sanctions_data.get("matches_found", False)
+    if (sanctions := state.get("sanctions_results")) and sanctions.get("success"):
+        data = sanctions.get("data", {})
+        matches_found = data.get("matches_found", False)
         
         status = TileStatus.ACTION_REQUIRED if matches_found else TileStatus.CLEAR
         headline = "Sanctions Issues Found" if matches_found else "No Sanctions Issues"
@@ -168,13 +168,13 @@ def generate_snapshot_node(state: ComplianceState) -> ComplianceState:
         tiles["sanctions"] = Tile(
             status=status,
             headline=headline,
-            details_md=f"**Matches Found:** {sanctions_data.get('match_count', 0)}"
+            details_md=f"**Matches Found:** {data.get('match_count', 0)}"
         ).model_dump()
     
     # Refusals Tile
-    if state.get("refusals_results", {}).get("success"):
-        refusals_data = state["refusals_results"].get("data", {})
-        total_refusals = refusals_data.get("total_refusals", 0)
+    if (refusals := state.get("refusals_results")) and refusals.get("success"):
+        data = refusals.get("data", {})
+        total_refusals = data.get("total_refusals", 0)
         
         status = TileStatus.ATTENTION if total_refusals > 0 else TileStatus.CLEAR
         headline = f"{total_refusals} Import Refusals" if total_refusals > 0 else "No Recent Refusals"
@@ -186,9 +186,9 @@ def generate_snapshot_node(state: ComplianceState) -> ComplianceState:
         ).model_dump()
     
     # Rulings Tile
-    if state.get("rulings_results", {}).get("success"):
-        rulings_data = state["rulings_results"].get("data", {})
-        total_rulings = rulings_data.get("total_rulings", 0)
+    if (rulings := state.get("rulings_results")) and rulings.get("success"):
+        data = rulings.get("data", {})
+        total_rulings = data.get("total_rulings", 0)
         
         tiles["rulings"] = Tile(
             status=TileStatus.CLEAR,
