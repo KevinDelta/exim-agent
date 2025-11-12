@@ -9,13 +9,19 @@ class ChatRequest(BaseModel):
     user_id: Optional[str] = Field(None, description="The user's ID")
     session_id: Optional[str] = Field(None, description="The session's ID") # This is the session ID from the frontend
     stream: bool = Field(False, description="Whether to stream the response")
+    # Optional identifiers for compliance routing
+    client_id: Optional[str] = Field(None, description="Client identifier for compliance queries")
+    sku_id: Optional[str] = Field(None, description="SKU identifier for compliance queries")
+    lane_id: Optional[str] = Field(None, description="Lane identifier for compliance queries")
 
 class ChatResponse(BaseModel):
     """Response model for chat."""
-    message: str
+    response: str = Field(..., description="The assistant's response")
     success: bool = True
     error: Optional[str] = None
-    stream: bool = False
+    citations: Optional[List[Dict[str, Any]]] = Field(default_factory=list, description="Source citations")
+    snapshot: Optional[Dict[str, Any]] = Field(None, description="Compliance snapshot if compliance delegation occurred")
+    routing_path: Optional[str] = Field(None, description="Which path was taken: general_rag, slot_filling, or delegate_compliance")
 
 class EvalRequest(BaseModel):
     """Request model for evaluation."""
@@ -125,17 +131,19 @@ class SnapshotResponse(BaseModel):
 class AskRequest(BaseModel):
     """Request model for compliance Q&A."""
     client_id: str = Field(..., description="Client identifier")
+    sku_id: str = Field(..., description="SKU identifier")
+    lane_id: str = Field(..., description="Lane identifier (e.g., CNSHA-USLAX-ocean)")
     question: str = Field(..., description="Natural language compliance question")
-    sku_id: Optional[str] = Field(None, description="Optional SKU context")
-    lane_id: Optional[str] = Field(None, description="Optional lane context")
+    hts_code: Optional[str] = Field(None, description="Optional HTS code override")
 
     model_config = {
         "json_schema_extra": {
             "example": {
                 "client_id": "client_ABC",
-                "question": "What are the special requirements for importing smartphones from China?",
                 "sku_id": "SKU-123",
                 "lane_id": "CNSHA-USLAX-ocean",
+                "question": "What are the special requirements for importing smartphones from China?",
+                "hts_code": "8517.12.00",
             }
         }
     }

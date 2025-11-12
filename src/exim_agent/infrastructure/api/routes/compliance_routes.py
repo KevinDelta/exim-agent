@@ -90,9 +90,30 @@ async def generate_snapshot(request: SnapshotRequest) -> SnapshotResponse:
     - Relevant CBP Rulings
     
     Each tile includes risk level, status, and actionable insights.
+    Returns partial snapshot with error tiles when tools fail.
     """
     try:
+        # Validate required fields
+        if not request.client_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing required field: client_id"
+            )
+        if not request.sku_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing required field: sku_id"
+            )
+        if not request.lane_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing required field: lane_id"
+            )
+        
         logger.info(f"Snapshot request: {request.client_id}/{request.sku_id}/{request.lane_id}")
+        
+        # Track processing time
+        start_time = datetime.utcnow()
         
         # Initialize service if needed
         if compliance_service.graph is None:
@@ -106,22 +127,36 @@ async def generate_snapshot(request: SnapshotRequest) -> SnapshotResponse:
             hts_code=request.hts_code
         )
         
+        # Calculate processing time
+        end_time = datetime.utcnow()
+        processing_time_ms = int((end_time - start_time).total_seconds() * 1000)
+        
+        # Extract alert count from snapshot
+        snapshot = result.get("snapshot", {})
+        alert_count = 0
+        if isinstance(snapshot, dict):
+            alert_count = snapshot.get("active_alerts_count", 0)
+        
         # Add metadata
         metadata = {
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": end_time.isoformat(),
             "client_id": request.client_id,
             "sku_id": request.sku_id,
-            "lane_id": request.lane_id
+            "lane_id": request.lane_id,
+            "processing_time_ms": processing_time_ms,
+            "alert_count": alert_count
         }
         
         return SnapshotResponse(
             success=result.get("success", False),
-            snapshot=result.get("snapshot"),
+            snapshot=snapshot,
             citations=result.get("citations"),
             error=result.get("error"),
             metadata=metadata
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Snapshot generation failed: {e}")
         raise HTTPException(
@@ -286,6 +321,10 @@ async def ask_compliance_question(request: AskRequest) -> AskResponse:
     """
     Answer compliance questions using RAG.
     
+    Requires all three identifiers (client_id, sku_id, lane_id) plus question.
+    Returns answer with citations even when some tools fail.
+    Acknowledges limited information in answer when context is partial.
+    
     Queries:
     - HTS notes and requirements
     - CBP rulings database
@@ -296,6 +335,28 @@ async def ask_compliance_question(request: AskRequest) -> AskResponse:
     Returns natural language answer with citations.
     """
     try:
+        # Validate required fields
+        if not request.client_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing required field: client_id"
+            )
+        if not request.sku_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing required field: sku_id"
+            )
+        if not request.lane_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing required field: lane_id"
+            )
+        if not request.question:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing required field: question"
+            )
+        
         logger.info(f"Q&A request from {request.client_id}: {request.question}")
         
         # Initialize service if needed
@@ -319,6 +380,8 @@ async def ask_compliance_question(request: AskRequest) -> AskResponse:
             error=result.get("error")
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Q&A request failed: {e}")
         raise HTTPException(

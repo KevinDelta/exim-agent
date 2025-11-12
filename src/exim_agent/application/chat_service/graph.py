@@ -12,51 +12,111 @@ from exim_agent.infrastructure.llm_providers.langchain_provider import get_llm
 from exim_agent.application.compliance_service.compliance_graph import compliance_graph
 
 
-class MemoryState(TypedDict):
-    """Simplified state schema for Mem0-powered chat."""
-    # Input
+class ChatState(TypedDict):
+    """Minimal state schema for chat graph with clear field purposes."""
+    # Required inputs
     query: str
     user_id: str
     session_id: str
-    # Optional domain routing hints
+    
+    # Optional routing metadata (for compliance delegation)
     client_id: str | None
     sku_id: str | None
     lane_id: str | None
     
-    # Mem0 memories (replaces WM + EM + intent/entity extraction)
-    relevant_memories: List[Dict[str, Any]]
+    # Processing context
+    relevant_memories: List[Dict[str, Any]]  # Mem0 conversational memories
+    rag_context: List[Dict[str, Any]]  # ChromaDB document retrieval
+    final_context: List[Dict[str, Any]]  # Combined & reranked context
     
-    # RAG context (document retrieval)
-    rag_context: List[Dict[str, Any]]
-    
-    # Combined & reranked context
-    final_context: List[Dict[str, Any]]
-    
-    # Response
+    # Outputs
     response: str
     citations: List[str]
-    # Optional: latest compliance snapshot
-    snapshot: Dict[str, Any] | None
+    snapshot: Dict[str, Any] | None  # Optional compliance snapshot
+    routing_path: str | None  # Which path was taken: general_rag, slot_filling, or delegate_compliance
+    
+    # Internal routing flags (not exposed to API)
+    _needs_slot_filling: bool
+    _missing_slots: List[str]
 
 
-def _looks_like_compliance_question(text: str) -> bool:
-    """Heuristic to detect compliance-related questions."""
-    if not text:
-        return False
-    keywords = [
+def route_decision(state: ChatState) -> str:
+    """
+    routing with explicit slot validation.
+    
+    Returns:
+        - "slot_filling": Compliance intent but missing required slots
+        - "delegate_compliance": Compliance intent with all required slots
+        - "general_rag": General question or ambiguous intent
+    """
+    query = state["query"].lower()
+    
+    # Simple keyword-based compliance detection
+    compliance_keywords = [
         "hts", "sanctions", "refusal", "ruling", "classification",
-        "duty", "tariff", "cbp", "export", "compliance",
+        "duty", "tariff", "cbp", "compliance", "snapshot"
     ]
-    lower = text.lower()
-    return any(kw in lower for kw in keywords)
+    
+    is_compliance = any(kw in query for kw in compliance_keywords)
+    
+    if not is_compliance:
+        return "general_rag"
+    
+    # Check for required slots
+    has_sku = bool(state.get("sku_id"))
+    has_lane = bool(state.get("lane_id"))
+    
+    if has_sku and has_lane:
+        return "delegate_compliance"
+    
+    # Compliance intent but missing slots
+    missing = []
+    if not has_sku:
+        missing.append("sku_id")
+    if not has_lane:
+        missing.append("lane_id")
+    
+    state["_needs_slot_filling"] = True
+    state["_missing_slots"] = missing
+    return "slot_filling"
 
 
-def route_node(state: MemoryState) -> MemoryState:
+def route_node(state: ChatState) -> ChatState:
     """No-op; routing handled via conditional edges."""
     return state
 
 
-def delegate_to_compliance(state: MemoryState) -> MemoryState:
+def slot_filling_node(state: ChatState) -> ChatState:
+    """
+    Ask user for missing required slots.
+    Never fabricate or assume values.
+    Routes directly to memory update and end (doesn't proceed to compliance).
+    """
+    missing = state.get("_missing_slots", [])
+    
+    if not missing:
+        state["response"] = "I need more information to proceed with the compliance check."
+        state["citations"] = []
+        state["snapshot"] = None
+        state["routing_path"] = "slot_filling"
+        return state
+    
+    # Generate targeted prompt for missing slots
+    slots_str = " and ".join(missing)
+    state["response"] = (
+        f"To run a compliance check, I need the following information: {slots_str}. "
+        f"Please provide these identifiers."
+    )
+    state["citations"] = []
+    state["snapshot"] = None
+    state["routing_path"] = "slot_filling"
+    
+    logger.info(f"Slot filling requested for: {missing}")
+    
+    return state
+
+
+def delegate_to_compliance(state: ChatState) -> ChatState:
     """Delegate handling to the compliance graph and adapt response to chat state."""
     logger.info("Routing to compliance graph")
 
@@ -87,6 +147,7 @@ def delegate_to_compliance(state: MemoryState) -> MemoryState:
         answer = comp_result.get("answer")
         snapshot = comp_result.get("snapshot")
         state["snapshot"] = snapshot
+        state["routing_path"] = "delegate_compliance"
 
         if answer:
             state["response"] = answer
@@ -116,61 +177,71 @@ def delegate_to_compliance(state: MemoryState) -> MemoryState:
         logger.error(f"Compliance delegation failed: {e}")
         state["response"] = "I encountered an error running the compliance workflow."
         state["citations"] = []
+        state["routing_path"] = "delegate_compliance"
 
     return state
 
 
-def load_memories(state: MemoryState) -> MemoryState:
+def load_memories_safe(state: ChatState) -> ChatState:
     """
-    Load relevant memories from Mem0.
+    Load relevant memories from Mem0 with complete fail-soft behavior.
+    Memory failures never block response generation.
     """
     logger.info(f"Loading Mem0 memories for session: {state['session_id']}")
     
-    query = state["query"]
-    user_id = state["user_id"]
-    session_id = state["session_id"]
-    
     if not mem0_client.is_enabled():
-        logger.warning("Mem0 not enabled, skipping memory load")
+        logger.debug("Mem0 disabled, skipping memory load")
         state["relevant_memories"] = []
         return state
     
-    # Mem0 automatically:
-    # - Retrieves recent conversation context
-    # - Classifies intent and extracts entities
-    # - Searches episodic memories
-    # - Ranks by relevance
-    results = mem0_client.search(
-        query=query,
-        user_id=user_id,
-        session_id=session_id,
-        limit=config.mem0_history_limit
-    )
-    
-    # Handle dict or list response from Mem0
-    if isinstance(results, dict):
-        memories = results.get('results', [])
-    else:
-        memories = results if isinstance(results, list) else []
-    
-    state["relevant_memories"] = memories
-    logger.info(f"Loaded {len(memories)} relevant memories from Mem0")
+    try:
+        query = state["query"]
+        user_id = state["user_id"]
+        session_id = state["session_id"]
+        
+        # Mem0 automatically:
+        # - Retrieves recent conversation context
+        # - Classifies intent and extracts entities
+        # - Searches episodic memories
+        # - Ranks by relevance
+        results = mem0_client.search(
+            query=query,
+            user_id=user_id,
+            session_id=session_id,
+            limit=config.mem0_history_limit
+        )
+        
+        # Handle dict or list response from Mem0
+        if isinstance(results, dict):
+            memories = results.get('results', [])
+        elif isinstance(results, list):
+            memories = results
+        else:
+            memories = []
+        
+        state["relevant_memories"] = memories
+        logger.info(f"Loaded {len(memories)} relevant memories from Mem0")
+        
+    except Exception as e:
+        logger.warning(f"Memory load failed (continuing with empty context): {e}")
+        state["relevant_memories"] = []
     
     return state
 
 
-def query_documents(state: MemoryState) -> MemoryState:
+def query_documents_safe(state: ChatState) -> ChatState:
     """
-    Query document store for RAG context (semantic memory).
+    Query document store for RAG context with complete fail-soft behavior.
+    RAG failures never block response generation.
     
     This is separate from Mem0 - it's your knowledge base documents.
     Mem0 handles conversational memory, this handles document RAG.
     """
     logger.info("Querying document store for RAG context")
     
-    query = state["query"]
-    
     try:
+        query = state["query"]
+        
         # Query ChromaDB documents collection using LangChain vector store
         vector_store = chroma_client.get_vector_store()
         documents = vector_store.similarity_search(
@@ -189,15 +260,16 @@ def query_documents(state: MemoryState) -> MemoryState:
         logger.info(f"Retrieved {len(documents)} RAG documents")
         
     except Exception as e:
-        logger.error(f"Failed to query documents: {e}")
+        logger.warning(f"Document retrieval failed (continuing with empty context): {e}")
         state["rag_context"] = []
     
     return state
 
 
-def rerank_and_fuse(state: MemoryState) -> MemoryState:
+def rerank_and_fuse_safe(state: ChatState) -> ChatState:
     """
     Combine memories + RAG results and rerank with cross-encoder.
+    Falls back to truncation if reranking fails.
     
     Fuses:
     - Mem0 memories (conversational context)
@@ -238,7 +310,7 @@ def rerank_and_fuse(state: MemoryState) -> MemoryState:
         state["final_context"] = []
         return state
     
-    # Rerank if enabled
+    # Try reranking if enabled
     if config.enable_reranking and len(all_docs) > 1:
         try:
             # Convert dict documents to LangChain Documents for reranking
@@ -269,15 +341,16 @@ def rerank_and_fuse(state: MemoryState) -> MemoryState:
             ]
             logger.info(f"Reranked to {len(reranked_docs)} documents")
         except Exception as e:
-            logger.error(f"Reranking failed: {e}")
+            logger.warning(f"Reranking failed, using truncation fallback: {e}")
             state["final_context"] = all_docs[:config.rerank_top_k]
     else:
+        # Simple truncation fallback
         state["final_context"] = all_docs[:config.rerank_top_k]
     
     return state
 
 
-def generate_response(state: MemoryState) -> MemoryState:
+def generate_response(state: ChatState) -> ChatState:
     """
     Generate response with LLM using final context.
     """
@@ -307,6 +380,7 @@ Answer:"""
     try:
         result = llm.invoke(prompt)
         state["response"] = result.content
+        state["routing_path"] = "general_rag"
         
         # Extract citations
         citations = []
@@ -323,13 +397,15 @@ Answer:"""
         logger.error(f"Failed to generate response: {e}")
         state["response"] = "I apologize, but I encountered an error generating a response."
         state["citations"] = []
+        state["routing_path"] = "general_rag"
     
     return state
 
 
-def update_memories(state: MemoryState) -> MemoryState:
+def update_memories_safe(state: ChatState) -> ChatState:
     """
-    Store conversation turn in Mem0.
+    Store conversation turn in Mem0 with complete fail-soft behavior.
+    Memory failures never block response generation.
     
     Replaces:
     - update_working_memory (session management)
@@ -341,85 +417,89 @@ def update_memories(state: MemoryState) -> MemoryState:
     """
     logger.info("Updating Mem0 with conversation turn")
     
-    query = state["query"]
-    response = state["response"]
-    user_id = state["user_id"]
-    session_id = state["session_id"]
-    
     if not mem0_client.is_enabled():
-        logger.warning("Mem0 not enabled, skipping memory update")
+        logger.debug("Mem0 disabled, skipping memory update")
         return state
     
-    # Mem0 automatically:
-    # - Deduplicates similar memories
-    # - Summarizes conversations
-    # - Manages temporal decay
-    # - Promotes important facts to long-term memory
-    messages = [
-        {"role": "user", "content": query},
-        {"role": "assistant", "content": response}
-    ]
-    
     try:
+        query = state["query"]
+        response = state["response"]
+        user_id = state["user_id"]
+        session_id = state["session_id"]
+        
+        # Mem0 automatically:
+        # - Deduplicates similar memories
+        # - Summarizes conversations
+        # - Manages temporal decay
+        # - Promotes important facts to long-term memory
+        messages = [
+            {"role": "user", "content": query},
+            {"role": "assistant", "content": response}
+        ]
+        
         mem0_client.add(
             messages=messages,
             user_id=user_id,
             session_id=session_id
         )
-        logger.info("Conversation stored in Mem0")
+        logger.debug("Conversation stored in Mem0 successfully")
         
     except Exception as e:
-        logger.error(f"Failed to update Mem0: {e}")
+        logger.warning(f"Memory update failed (continuing): {e}")
     
     return state
 
 
 def build_memory_graph() -> StateGraph:
     """
-    Build the simplified LangGraph state machine with Mem0 and domain routing.
+    Build the simplified LangGraph state machine with conservative routing.
     """
-    logger.info("Building Mem0-powered LangGraph")
+    logger.info("Building chat graph with conservative routing")
     
-    workflow = StateGraph(MemoryState)
+    workflow = StateGraph(ChatState)
     
     # Add nodes
     workflow.add_node("route", route_node)
+    workflow.add_node("slot_filling", slot_filling_node)
     workflow.add_node("delegate_to_compliance", delegate_to_compliance)
-    workflow.add_node("load_memories", load_memories)
-    workflow.add_node("query_documents", query_documents)
-    workflow.add_node("rerank_and_fuse", rerank_and_fuse)
+    workflow.add_node("load_memories", load_memories_safe)
+    workflow.add_node("query_documents", query_documents_safe)
+    workflow.add_node("rerank_and_fuse", rerank_and_fuse_safe)
     workflow.add_node("generate_response", generate_response)
-    workflow.add_node("update_memories", update_memories)
+    workflow.add_node("update_memories", update_memories_safe)
     
-    # Define edges with conditional routing
-    def route_after_entry(state: MemoryState) -> str:
-        # Route to compliance if IDs exist, a prior snapshot exists, or query looks compliance-related
-        has_ids = bool(state.get("client_id") or state.get("sku_id") or state.get("lane_id"))
-        has_snapshot = bool(state.get("snapshot"))
-        is_compliancey = _looks_like_compliance_question(state.get("query", ""))
-        return "delegate_to_compliance" if (has_ids or has_snapshot or is_compliancey) else "general"
+    # Define edges with conservative routing logic
+    def route_after_entry(state: ChatState) -> str:
+        """Use new route_decision function for conservative routing."""
+        return route_decision(state)
 
     workflow.set_entry_point("route")
     workflow.add_conditional_edges(
         "route",
         route_after_entry,
         {
-            "delegate_to_compliance": "delegate_to_compliance",
-            "general": "load_memories",
+            "slot_filling": "slot_filling",
+            "delegate_compliance": "delegate_to_compliance",
+            "general_rag": "load_memories",
         },
     )
 
-    # General chat path
+    # Slot filling path goes directly to memory update
+    workflow.add_edge("slot_filling", "update_memories")
+
+    # General RAG path
     workflow.add_edge("load_memories", "query_documents")
     workflow.add_edge("query_documents", "rerank_and_fuse")
     workflow.add_edge("rerank_and_fuse", "generate_response")
-
-    # Shared terminal update
     workflow.add_edge("generate_response", "update_memories")
+
+    # Compliance delegation path
     workflow.add_edge("delegate_to_compliance", "update_memories")
+    
+    # All paths converge at update_memories and end
     workflow.add_edge("update_memories", END)
     
-    logger.info("Mem0-powered LangGraph compiled successfully")
+    logger.info("Chat graph with conservative routing compiled successfully")
     
     return workflow.compile()
 

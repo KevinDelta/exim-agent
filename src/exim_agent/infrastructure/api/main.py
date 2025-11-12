@@ -1,6 +1,7 @@
 """Optimized FastAPI application with Mem0 memory system."""
 
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +11,7 @@ from exim_agent.application.chat_service.service import chat_service
 from exim_agent.application.ingest_documents_service.service import ingest_service
 from exim_agent.application.evaluation_service import evaluation_service
 from exim_agent.application.compliance_service.service import compliance_service
+from exim_agent.application.memory_service.mem0_client import mem0_client
 from exim_agent.domain.exceptions import DocumentIngestionError
 from exim_agent.infrastructure.db.chroma_client import chroma_client
 from exim_agent.infrastructure.db.compliance_collections import compliance_collections
@@ -92,7 +94,12 @@ async def root():
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest) -> ChatResponse:
     """
-    Chat endpoint with RAG + Mem0 memory.
+    Chat endpoint with RAG + Mem0 memory and compliance routing.
+    
+    Handles three routing paths:
+    1. General RAG: Non-compliance questions use document retrieval
+    2. Slot Filling: Compliance questions without required IDs prompt for missing information
+    3. Compliance Delegation: Compliance questions with all IDs delegate to compliance graph
     
     - Retrieves conversational memory from Mem0
     - Queries document knowledge base (RAG)
@@ -101,7 +108,9 @@ async def chat(request: ChatRequest) -> ChatResponse:
     - Stores conversation in Mem0
     """
     try:
-        logger.info(f"Chat request: {request.message[:50]}...")
+        # Extract message text
+        message_text = request.message if isinstance(request.message, str) else str(request.message)
+        logger.info(f"Chat request: {message_text[:50]}...")
         
         # Ensure chat service is initialized
         if not chat_service.initialized:
@@ -116,15 +125,27 @@ async def chat(request: ChatRequest) -> ChatResponse:
                     error=f"Initialization failed: {str(init_error)}"
                 )
         
+        # Generate default user_id and session_id if not provided
+        user_id = request.user_id or "default"
+        session_id = request.session_id or f"session-{user_id}"
+        
+        # Call chat service with optional identifiers
         result = chat_service.chat(
-            message=request.message
-            # Note: Mem0 handles conversation_history automatically via session_id
+            message=message_text,
+            user_id=user_id,
+            session_id=session_id,
+            client_id=request.client_id,
+            sku_id=request.sku_id,
+            lane_id=request.lane_id
         )
         
         return ChatResponse(
             response=result["response"],
             success=result.get("success", True),
-            error=result.get("error")
+            error=result.get("error"),
+            citations=result.get("citations", []),
+            snapshot=result.get("snapshot"),
+            routing_path=result.get("routing_path")
         )
         
     except Exception as e:
@@ -226,30 +247,112 @@ async def reset_memory(request: ResetMemoryRequest):
 @app.get("/health")
 async def health_check():
     """
-    Health check endpoint.
+    Health check endpoint that checks dependency status.
     
-    Returns system status and configuration.
+    Checks:
+    - ChromaDB connection status
+    - Mem0 availability (optional, doesn't fail if unavailable)
+    - LLM provider connectivity
+    
+    Returns detailed status for each dependency.
     """
+    dependencies = {}
+    overall_status = "healthy"
+    
+    # Check ChromaDB
     try:
         rag_stats = chroma_client.get_collection_stats()
-        
-        return {
+        dependencies["chromadb"] = {
             "status": "healthy",
-            "stack": {
-                "langgraph": True,
-                "mem0": config.mem0_enabled,
-                "reranking": config.enable_reranking,
-                "compliance": True,
-            },
-            "rag_documents": rag_stats,
+            "document_count": rag_stats.get("count", 0),
+            "collection_name": rag_stats.get("name", "unknown")
         }
-        
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        return {
+        logger.error(f"ChromaDB health check failed: {e}")
+        dependencies["chromadb"] = {
             "status": "unhealthy",
             "error": str(e)
         }
+        overall_status = "degraded"
+    
+    # Check Mem0 (optional - doesn't affect overall status)
+    try:
+        if config.mem0_enabled:
+            mem0_enabled = mem0_client.is_enabled()
+            dependencies["mem0"] = {
+                "status": "healthy" if mem0_enabled else "disabled",
+                "enabled": mem0_enabled
+            }
+        else:
+            dependencies["mem0"] = {
+                "status": "disabled",
+                "enabled": False
+            }
+    except Exception as e:
+        logger.warning(f"Mem0 health check failed (non-critical): {e}")
+        dependencies["mem0"] = {
+            "status": "unavailable",
+            "error": str(e),
+            "note": "Mem0 is optional and system can function without it"
+        }
+    
+    # Check LLM provider
+    try:
+        llm = get_llm()
+        dependencies["llm_provider"] = {
+            "status": "healthy",
+            "provider": config.llm_provider,
+            "model": getattr(llm, "model_name", "unknown")
+        }
+    except Exception as e:
+        logger.error(f"LLM provider health check failed: {e}")
+        dependencies["llm_provider"] = {
+            "status": "unhealthy",
+            "error": str(e)
+        }
+        overall_status = "unhealthy"
+    
+    # Check compliance service
+    try:
+        compliance_initialized = compliance_service.graph is not None
+        dependencies["compliance_service"] = {
+            "status": "healthy" if compliance_initialized else "not_initialized",
+            "initialized": compliance_initialized
+        }
+    except Exception as e:
+        logger.error(f"Compliance service health check failed: {e}")
+        dependencies["compliance_service"] = {
+            "status": "unhealthy",
+            "error": str(e)
+        }
+        overall_status = "degraded"
+    
+    # Check chat service
+    try:
+        chat_initialized = chat_service.initialized
+        dependencies["chat_service"] = {
+            "status": "healthy" if chat_initialized else "not_initialized",
+            "initialized": chat_initialized
+        }
+    except Exception as e:
+        logger.error(f"Chat service health check failed: {e}")
+        dependencies["chat_service"] = {
+            "status": "unhealthy",
+            "error": str(e)
+        }
+        overall_status = "degraded"
+    
+    return {
+        "status": overall_status,
+        "timestamp": datetime.utcnow().isoformat(),
+        "dependencies": dependencies,
+        "configuration": {
+            "langgraph": True,
+            "mem0_enabled": config.mem0_enabled,
+            "reranking_enabled": config.enable_reranking,
+            "llm_provider": config.llm_provider
+        }
+    }
 
 
 if __name__ == "__main__":

@@ -88,36 +88,39 @@ Answers compliance questions using RAG:
 
 ### ComplianceGraph (`compliance_graph.py`)
 
-LangGraph state machine with four nodes:
+LangGraph state machine with fail-soft behavior and input validation:
 
-1. **execute_tools_node**: Runs domain tools in parallel using asyncio
-2. **retrieve_context_node**: Fetches relevant documents from ChromaDB collections
-3. **generate_snapshot_node**: Creates structured tiles from tool outputs
-4. **answer_question_node**: Generates natural language answers for Q&A mode
+1. **validate_inputs_node**: Validates required fields (client_id, sku_id, lane_id)
+2. **execute_tools_failsoft**: Runs domain tools sequentially with fail-soft error handling
+3. **retrieve_context_node**: Fetches relevant documents from ChromaDB collections
+4. **generate_snapshot_partial**: Creates structured tiles even with partial tool results
+5. **answer_question_node**: Generates natural language answers with graceful degradation
 
 **State Schema**:
 
 ```python
 class ComplianceState(TypedDict):
-    # Input
+    # Required inputs
     client_id: str
     sku_id: str
     lane_id: str
+    
+    # Optional mode selector
     question: Optional[str]
     
-    # Tool results
-    hts_results: Dict[str, Any]
-    sanctions_results: Dict[str, Any]
-    refusals_results: Dict[str, Any]
-    rulings_results: Dict[str, Any]
+    # Tool results (singular form, consistent {success, data, error} structure)
+    hts_result: Dict[str, Any]
+    sanctions_result: Dict[str, Any]
+    refusals_result: Dict[str, Any]
+    rulings_result: Dict[str, Any]
     
     # RAG context
     rag_context: List[Dict[str, Any]]
     
-    # Output
-    snapshot: Dict[str, Any]
-    citations: List[Evidence]
+    # Outputs
+    snapshot: Optional[Dict[str, Any]]
     answer: Optional[str]
+    citations: List[Evidence]
 ```
 
 ## Usage
