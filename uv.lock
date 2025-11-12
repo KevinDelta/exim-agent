@@ -1162,6 +1162,7 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "sentence-transformers" },
     { name = "supabase" },
+    { name = "supabase-auth" },
     { name = "typer" },
     { name = "unstructured" },
 ]
@@ -1204,6 +1205,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.1.1" },
     { name = "sentence-transformers", specifier = ">=2.2.0" },
     { name = "supabase", specifier = ">=2.9.1" },
+    { name = "supabase-auth", specifier = ">=2.24.0" },
     { name = "typer" },
     { name = "unstructured", specifier = ">=0.10.0" },
 ]

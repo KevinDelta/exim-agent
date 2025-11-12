@@ -103,6 +103,19 @@ async def chat(request: ChatRequest) -> ChatResponse:
     try:
         logger.info(f"Chat request: {request.message[:50]}...")
         
+        # Ensure chat service is initialized
+        if not chat_service.initialized:
+            logger.warning("Chat service not initialized, attempting initialization...")
+            try:
+                chat_service.initialize()
+            except Exception as init_error:
+                logger.error(f"Failed to initialize chat service: {init_error}")
+                return ChatResponse(
+                    response="Chat service is not available. Please check server configuration.",
+                    success=False,
+                    error=f"Initialization failed: {str(init_error)}"
+                )
+        
         result = chat_service.chat(
             message=request.message
             # Note: Mem0 handles conversation_history automatically via session_id
@@ -115,7 +128,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
         )
         
     except Exception as e:
-        logger.error(f"Chat request failed: {e}")
+        logger.error(f"Chat request failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

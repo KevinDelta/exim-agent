@@ -6,19 +6,16 @@ from pydantic import BaseModel, Field
 class ChatRequest(BaseModel):
     """Request model for chat."""
     message: str | dict = Field(..., description="The user's message")
-    conversation_history: Optional[list[dict]] = Field(
-        default=None,
-        description="DEPRECATED: Conversation history is now managed automatically by Mem0. This field is ignored."
-    )
+    user_id: Optional[str] = Field(None, description="The user's ID")
+    session_id: Optional[str] = Field(None, description="The session's ID") # This is the session ID from the frontend
     stream: bool = Field(False, description="Whether to stream the response")
-
 
 class ChatResponse(BaseModel):
     """Response model for chat."""
-    response: str
+    message: str
     success: bool = True
     error: Optional[str] = None
-
+    stream: bool = False
 
 class EvalRequest(BaseModel):
     """Request model for evaluation."""

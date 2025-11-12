@@ -102,7 +102,8 @@ async def generate_snapshot(request: SnapshotRequest) -> SnapshotResponse:
         result = compliance_service.snapshot(
             client_id=request.client_id,
             sku_id=request.sku_id,
-            lane_id=request.lane_id
+            lane_id=request.lane_id,
+            hts_code=request.hts_code
         )
         
         # Add metadata
@@ -306,7 +307,8 @@ async def ask_compliance_question(request: AskRequest) -> AskResponse:
             client_id=request.client_id,
             question=request.question,
             sku_id=request.sku_id,
-            lane_id=request.lane_id
+            lane_id=request.lane_id,
+            hts_code=request.hts_code,
         )
         
         return AskResponse(

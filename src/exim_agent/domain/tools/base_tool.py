@@ -209,7 +209,7 @@ class ComplianceTool(ABC):
             except Exception as e:
                 last_exception = e
                 
-                # Log error for monitoring (requirement 7.1)
+                # Log error for monitoring
                 logger.error(
                     f"{self.__class__.__name__} attempt {attempt + 1}/{self.retry_config.max_attempts} failed: {e}",
                     extra={

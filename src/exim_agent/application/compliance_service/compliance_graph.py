@@ -11,6 +11,10 @@ from exim_agent.domain.compliance.compliance_event import Tile, SnapshotResponse
 from exim_agent.domain.compliance.enums import TileStatus, RiskLevel
 from exim_agent.infrastructure.llm_providers.openai_provider import OpenAIProvider
 
+# Safe default HTS code when none provided
+DEFAULT_HTS_CODE = "8517.12.00"
+from exim_agent.infrastructure.llm_providers.langchain_provider import get_llm
+
 
 class ComplianceState(TypedDict):
     """Simple state for compliance graph MVP."""
@@ -39,19 +43,13 @@ def execute_tools_node(state: ComplianceState) -> ComplianceState:
     """Execute compliance tools sequentially."""
     logger.info(f"Executing compliance tools for SKU: {state['sku_id']}")
     
-    # Simple default values for MVP
-    hts_code = "8517.12.00"  # Default for testing
+    # Get HTS code from state with fallback
+    hts_code = state.get('hts_code') or DEFAULT_HTS_CODE
     party_name = "Test Supplier Co."
-    
-    # Initialize tools
-    hts_tool = HTSTool()
-    sanctions_tool = SanctionsTool()
-    refusals_tool = RefusalsTool()
-    rulings_tool = RulingsTool()
     
     # Execute tools sequentially
     try:
-        hts_result = hts_tool.run(hts_code=hts_code, lane_id=state['lane_id'])
+        hts_result = HTSTool().run(hts_code=hts_code, lane_id=state['lane_id'])
         state['hts_results'] = {
             'success': hts_result.success,
             'data': hts_result.data,
@@ -62,7 +60,7 @@ def execute_tools_node(state: ComplianceState) -> ComplianceState:
         state['hts_results'] = {'success': False, 'error': str(e)}
     
     try:
-        sanctions_result = sanctions_tool.run(party_name=party_name, lane_id=state['lane_id'])
+        sanctions_result = SanctionsTool().run(party_name=party_name, lane_id=state['lane_id'])
         state['sanctions_results'] = {
             'success': sanctions_result.success,
             'data': sanctions_result.data,
@@ -73,7 +71,7 @@ def execute_tools_node(state: ComplianceState) -> ComplianceState:
         state['sanctions_results'] = {'success': False, 'error': str(e)}
     
     try:
-        refusals_result = refusals_tool.run(hts_code=hts_code, lane_id=state['lane_id'])
+        refusals_result = RefusalsTool().run(hts_code=hts_code, lane_id=state['lane_id'])
         state['refusals_results'] = {
             'success': refusals_result.success,
             'data': refusals_result.data,
@@ -84,7 +82,7 @@ def execute_tools_node(state: ComplianceState) -> ComplianceState:
         state['refusals_results'] = {'success': False, 'error': str(e)}
     
     try:
-        rulings_result = rulings_tool.run(hts_code=hts_code, lane_id=state['lane_id'])
+        rulings_result = RulingsTool().run(hts_code=hts_code, lane_id=state['lane_id'])
         state['rulings_results'] = {
             'success': rulings_result.success,
             'data': rulings_result.data,
@@ -113,7 +111,7 @@ def retrieve_context_node(state: ComplianceState) -> ComplianceState:
             compliance_collections.initialize()
         
         # Simple context retrieval - just get some relevant docs
-        hts_code = state.get('hts_code', '8517.12.00')  # Default for MVP
+        hts_code = state.get('hts_code', DEFAULT_HTS_CODE)
         
         # Search for relevant documents
         hts_notes = compliance_collections.search_hts_notes(
@@ -265,23 +263,10 @@ def answer_question_node(state: ComplianceState) -> ComplianceState:
         context = "\n".join(context_parts)
         
         # Generate simple answer using LLM
-        llm_provider = OpenAIProvider()
+        llm = get_llm()
+        result = llm.invoke(f"Based on the following compliance information, answer this question: {question}\n\nContext: {context}\n\nProvide a clear, concise answer based on the available information.")
         
-        prompt = f"""Based on the following compliance information, answer this question: {question}
-
-Context:
-{context}
-
-Provide a clear, concise answer based on the available information."""
-        
-        answer = llm_provider.generate_response(
-            system_prompt="You are a compliance expert. Provide accurate answers based on the given context.",
-            user_prompt=prompt,
-            max_tokens=500,
-            temperature=0.1
-        )
-        
-        state['answer'] = answer
+        state['answer'] = result.content
         
     except Exception as e:
         logger.error(f"Error answering question: {e}")
@@ -325,5 +310,3 @@ def build_compliance_graph() -> StateGraph:
     return graph.compile()
 
 compliance_graph = build_compliance_graph()
-
-

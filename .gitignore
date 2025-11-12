@@ -185,3 +185,5 @@ cython_debug/
 data/chroma_db/
 data/documents/*
 !data/documents/.gitkeep
+!frontend/src/lib/
+!frontend/src/lib/**
