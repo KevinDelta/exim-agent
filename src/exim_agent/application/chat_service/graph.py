@@ -1,4 +1,4 @@
-"""Simplified LangGraph state machine with Mem0 integration."""
+"""Simplified LangGraph state machine with Mem0 integration and compliance routing."""
 
 from typing import TypedDict, List, Dict, Any
 from langgraph.graph import StateGraph, END
@@ -9,6 +9,7 @@ from exim_agent.application.memory_service.mem0_client import mem0_client
 from exim_agent.infrastructure.db.chroma_client import chroma_client
 from exim_agent.application.reranking_service.service import reranking_service
 from exim_agent.infrastructure.llm_providers.langchain_provider import get_llm
+from exim_agent.application.compliance_service.compliance_graph import compliance_graph
 
 
 class MemoryState(TypedDict):
@@ -17,6 +18,10 @@ class MemoryState(TypedDict):
     query: str
     user_id: str
     session_id: str
+    # Optional domain routing hints
+    client_id: str | None
+    sku_id: str | None
+    lane_id: str | None
     
     # Mem0 memories (replaces WM + EM + intent/entity extraction)
     relevant_memories: List[Dict[str, Any]]
@@ -30,6 +35,89 @@ class MemoryState(TypedDict):
     # Response
     response: str
     citations: List[str]
+    # Optional: latest compliance snapshot
+    snapshot: Dict[str, Any] | None
+
+
+def _looks_like_compliance_question(text: str) -> bool:
+    """Heuristic to detect compliance-related questions."""
+    if not text:
+        return False
+    keywords = [
+        "hts", "sanctions", "refusal", "ruling", "classification",
+        "duty", "tariff", "cbp", "export", "compliance",
+    ]
+    lower = text.lower()
+    return any(kw in lower for kw in keywords)
+
+
+def route_node(state: MemoryState) -> MemoryState:
+    """No-op; routing handled via conditional edges."""
+    return state
+
+
+def delegate_to_compliance(state: MemoryState) -> MemoryState:
+    """Delegate handling to the compliance graph and adapt response to chat state."""
+    logger.info("Routing to compliance graph")
+
+    client_id = state.get("client_id")
+    sku_id = state.get("sku_id")
+    lane_id = state.get("lane_id")
+    question = state.get("query") or ""
+
+    # Decide between snapshot vs Q&A: if explicit snapshot intent keywords, skip question
+    snapshot_intents = ["snapshot", "run compliance", "generate snapshot"]
+    if any(tok in question.lower() for tok in snapshot_intents):
+        comp_question: str | None = None
+    else:
+        comp_question = question
+
+    comp_input: Dict[str, Any] = {
+        "client_id": client_id or "default-client",
+        "sku_id": sku_id or "default-sku",
+        "lane_id": lane_id or "default-lane",
+    }
+    if comp_question:
+        comp_input["question"] = comp_question
+
+    try:
+        comp_result = compliance_graph.invoke(comp_input)
+
+        # Prefer Q&A answer if present, else surface a brief snapshot summary
+        answer = comp_result.get("answer")
+        snapshot = comp_result.get("snapshot")
+        state["snapshot"] = snapshot
+
+        if answer:
+            state["response"] = answer
+        elif snapshot:
+            tiles = snapshot.get("tiles", {}) if isinstance(snapshot, dict) else {}
+            statuses = {k: (v.get("status") if isinstance(v, dict) else None) for k, v in tiles.items()}
+            summary = f"Compliance snapshot generated. Tile statuses: {statuses}"
+            state["response"] = summary
+        else:
+            state["response"] = "Compliance workflow completed."
+
+        # Extract simple citations list if present
+        citations: List[str] = []
+        raw_citations = comp_result.get("citations") or []
+        for c in raw_citations:
+            if isinstance(c, dict):
+                src = c.get("source")
+                if src and src not in citations:
+                    citations.append(src)
+            else:
+                s = str(c)
+                if s and s not in citations:
+                    citations.append(s)
+        state["citations"] = citations[:5]
+
+    except Exception as e:
+        logger.error(f"Compliance delegation failed: {e}")
+        state["response"] = "I encountered an error running the compliance workflow."
+        state["citations"] = []
+
+    return state
 
 
 def load_memories(state: MemoryState) -> MemoryState:
@@ -288,25 +376,47 @@ def update_memories(state: MemoryState) -> MemoryState:
 
 def build_memory_graph() -> StateGraph:
     """
-    Build the simplified LangGraph state machine with Mem0.
+    Build the simplified LangGraph state machine with Mem0 and domain routing.
     """
     logger.info("Building Mem0-powered LangGraph")
     
     workflow = StateGraph(MemoryState)
     
     # Add nodes
+    workflow.add_node("route", route_node)
+    workflow.add_node("delegate_to_compliance", delegate_to_compliance)
     workflow.add_node("load_memories", load_memories)
     workflow.add_node("query_documents", query_documents)
     workflow.add_node("rerank_and_fuse", rerank_and_fuse)
     workflow.add_node("generate_response", generate_response)
     workflow.add_node("update_memories", update_memories)
     
-    # Define edges (sequential flow)
-    workflow.set_entry_point("load_memories")
+    # Define edges with conditional routing
+    def route_after_entry(state: MemoryState) -> str:
+        # Route to compliance if IDs exist, a prior snapshot exists, or query looks compliance-related
+        has_ids = bool(state.get("client_id") or state.get("sku_id") or state.get("lane_id"))
+        has_snapshot = bool(state.get("snapshot"))
+        is_compliancey = _looks_like_compliance_question(state.get("query", ""))
+        return "delegate_to_compliance" if (has_ids or has_snapshot or is_compliancey) else "general"
+
+    workflow.set_entry_point("route")
+    workflow.add_conditional_edges(
+        "route",
+        route_after_entry,
+        {
+            "delegate_to_compliance": "delegate_to_compliance",
+            "general": "load_memories",
+        },
+    )
+
+    # General chat path
     workflow.add_edge("load_memories", "query_documents")
     workflow.add_edge("query_documents", "rerank_and_fuse")
     workflow.add_edge("rerank_and_fuse", "generate_response")
+
+    # Shared terminal update
     workflow.add_edge("generate_response", "update_memories")
+    workflow.add_edge("delegate_to_compliance", "update_memories")
     workflow.add_edge("update_memories", END)
     
     logger.info("Mem0-powered LangGraph compiled successfully")

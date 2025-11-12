@@ -9,7 +9,6 @@ from exim_agent.application.memory_service.mem0_client import mem0_client
 from exim_agent.infrastructure.db.compliance_collections import compliance_collections
 from exim_agent.domain.compliance.compliance_event import Tile, SnapshotResponse, Evidence
 from exim_agent.domain.compliance.enums import TileStatus, RiskLevel
-from exim_agent.infrastructure.llm_providers.openai_provider import OpenAIProvider
 
 # Safe default HTS code when none provided
 DEFAULT_HTS_CODE = "8517.12.00"
@@ -264,8 +263,8 @@ def answer_question_node(state: ComplianceState) -> ComplianceState:
         
         # Generate simple answer using LLM
         llm = get_llm()
-        result = llm.invoke(f"Based on the following compliance information, answer this question: {question}\n\nContext: {context}\n\nProvide a clear, concise answer based on the available information.")
-        
+        prompt = f"Based on the following compliance information, answer this question: {question}\n\nContext: {context}\n\nProvide a clear, concise answer based on the available information."
+        result = llm.invoke(prompt)
         state['answer'] = result.content
         
     except Exception as e:
