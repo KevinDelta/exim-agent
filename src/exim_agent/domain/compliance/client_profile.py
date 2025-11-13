@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, validator
 
 from .enums import TransportMode, NotificationChannel, RiskLevel, MonitoringStatus
 
@@ -151,7 +151,7 @@ class CompliancePreferences(BaseModel):
         le=1.0
     )
     risk_level_filter: RiskLevel = Field(
-        default=RiskLevel.WARN,
+        default=RiskLevel.LOW,
         description="Minimum risk level for alerts"
     )
     
@@ -209,7 +209,7 @@ class CompliancePreferences(BaseModel):
         json_schema_extra={
             "example": {
                 "duty_delta_threshold": 0.01,
-                "risk_level_filter": "warn",
+                "risk_level_filter": "low",
                 "notification_channels": ["email", "webhook"],
                 "email_addresses": ["ops@company.com", "compliance@company.com"],
                 "webhook_urls": ["https://api.company.com/compliance-webhook"],
@@ -329,7 +329,7 @@ class ClientProfile(BaseModel):
                 ],
                 "preferences": {
                     "duty_delta_threshold": 0.01,
-                    "risk_level_filter": "warn",
+                    "risk_level_filter": "low",
                     "notification_channels": ["email"],
                     "email_addresses": ["ops@abcimports.com"],
                     "weekly_digest_enabled": True,

@@ -21,11 +21,17 @@ class OpenAIProvider(BaseLLMProvider, BaseEmbeddingProvider):
         return config.openai_model
     
     def initialize_llm(self) -> ChatOpenAI:
-        """Initialize ChatOpenAI LLM."""
+        """Initialize ChatOpenAI LLM with explicit timeout."""
         self.validate_config()
         
         try:
-            logger.info(f"Initializing ChatOpenAI with model: {config.openai_model}")
+            # Get timeout from config, default to 30 seconds
+            timeout = getattr(config, 'llm_timeout_seconds', 30.0)
+            
+            logger.info(
+                f"Initializing ChatOpenAI with model: {config.openai_model}, "
+                f"timeout: {timeout}s"
+            )
             
             llm = ChatOpenAI(
                 model=config.openai_model,
@@ -33,6 +39,7 @@ class OpenAIProvider(BaseLLMProvider, BaseEmbeddingProvider):
                 temperature=config.llm_temperature,
                 max_tokens=config.max_tokens,
                 streaming=config.streaming,
+                timeout=timeout,  # Explicit timeout for all LLM calls
             )
             
             logger.info("ChatOpenAI initialized successfully")
@@ -41,7 +48,7 @@ class OpenAIProvider(BaseLLMProvider, BaseEmbeddingProvider):
         except Exception as e:
             logger.error(f"Failed to initialize ChatOpenAI: {e}")
             raise
-    
+
     def initialize_embeddings(self) -> OpenAIEmbeddings:
         """Initialize OpenAI embeddings."""
         self.validate_config()

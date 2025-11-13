@@ -1,9 +1,4 @@
-"""Infrastructure layer components for external system integrations."""
+"""Infrastructure layer modules (databases, LLM providers, APIs)."""
 
-from .crawl4ai import ChangeDetector, Crawl4AIClient, RateLimiter
+__all__: list[str] = []
 
-__all__ = [
-    "Crawl4AIClient",
-    "RateLimiter",
-    "ChangeDetector",
-]

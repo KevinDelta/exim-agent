@@ -29,9 +29,14 @@ class ChromaDBClient:
         try:
             logger.info(f"Initializing shared ChromaDB client at {config.chroma_db_path}")
             
+            # Get timeout from config
+            # chroma_timeout = getattr(config, 'chroma_timeout_seconds', 5.0)
+            # chroma_timeout = config.chroma_client_timeout_seconds
+            
             chroma_settings = ChromaSettings(
                 anonymized_telemetry=False,
                 allow_reset=True,
+                # chroma_client_timeout_seconds=chroma_timeout,  # Configurable timeout
             )
             self._client = chromadb.PersistentClient(
                 path=config.chroma_db_path,

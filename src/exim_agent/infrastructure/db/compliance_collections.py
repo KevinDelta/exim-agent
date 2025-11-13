@@ -36,7 +36,10 @@ class ComplianceCollections:
         try:
             logger.info("Initializing compliance collections...")
             
-            # Get shared ChromaDB client
+            # Ensure shared ChromaDB client is available
+            if chroma_client._client is None:  # pragma: no cover - lazy init guard
+                chroma_client.initialize()
+
             self._client = chroma_client.get_client()
             self._embeddings = get_embeddings()
             

@@ -11,7 +11,6 @@ An AI-powered trade compliance agent built with **LangChain v1**, **LangGraph**,
 * **RAG Chat**: Document-grounded question answering with reranking and context fusion
 * **Document Ingestion**: Multi-format document processing with intelligent chunking
 * **Evaluation Suite**: Built-in RAG evaluation with faithfulness, relevance, and precision metrics
-* **MLOps Integration**: Optional ZenML pipelines for experiment tracking and lineage
 
 ### Architecture
 
@@ -28,7 +27,6 @@ An AI-powered trade compliance agent built with **LangChain v1**, **LangGraph**,
 * **ChromaDB**: Vector database for RAG and compliance data
 * **OpenAI**: GPT-4 and embeddings (text-embedding-3-small)
 * **FastAPI**: Modern async API framework
-* **ZenML**: MLOps orchestration (optional)
 * **Python 3.11+**: Type hints and modern Python features
 
 ## Quick Start
@@ -110,7 +108,6 @@ src/exim_agent/
 │   ├── ingest_documents_service/  # Document processing
 │   ├── memory_service/        # Mem0 memory management
 │   ├── reranking_service/     # Context reranking
-│   └── zenml_pipelines/       # MLOps orchestration (optional)
 ├── domain/
 │   ├── compliance/            # Compliance models and enums
 │   ├── models.py              # Domain models
@@ -154,12 +151,6 @@ src/exim_agent/
 * `DELETE /memory/delete-all` - Clear all memories for a user
 * `GET /memory/history` - Get conversation history
 
-### ZenML Pipelines (Optional)
-
-* `POST /pipelines/ingest` - Run ingestion via ZenML pipeline
-* `POST /pipelines/analytics` - Run memory analytics pipeline
-* `GET /pipelines/status` - Check ZenML integration status
-
 ### Documentation
 
 * `GET /docs` - Interactive Swagger UI
@@ -193,6 +184,6 @@ make start-project
 
 ## Credits
 
-Built with modern AI stack: **LangChain v1**, **LangGraph**, **Mem0**, and **ZenML**.
+Built with modern AI stack: **LangChain v1**, **LangGraph**, and **Mem0**.
 
 Original template from [agent-api-cookiecutter](https://github.com/neural-maze/agent-api-cookiecutter).

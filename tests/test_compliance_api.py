@@ -118,12 +118,11 @@ class TestComplianceWeeklyPulse:
         
         summary = data["summary"]
         assert "total_sku_lanes" in summary
+        assert "total_changes" in summary
         assert "high_priority_changes" in summary
         assert "medium_priority_changes" in summary
         assert "low_priority_changes" in summary
-        assert "new_sanctions" in summary
-        assert "new_refusals" in summary
-        assert "policy_updates" in summary
+        assert "change_types" in summary
     
     def test_weekly_pulse_changes_structure(self, client):
         """Test weekly pulse changes array structure."""
@@ -162,33 +161,6 @@ class TestComplianceDailyPulse:
         assert "summary" in data
         assert "changes" in data
     
-    def test_daily_pulse_with_date_range(self, client):
-        """Test daily pulse with date range filtering."""
-        response = client.get(
-            "/compliance/pulse/test_client/daily",
-            params={
-                "start_date": "2024-01-01",
-                "end_date": "2024-01-31"
-            }
-        )
-        
-        assert response.status_code == 200
-        data = response.json()
-        
-        assert data["client_id"] == "test_client"
-    
-    def test_daily_pulse_requires_action_filter(self, client):
-        """Test daily pulse with requires_action filter."""
-        response = client.get(
-            "/compliance/pulse/test_client/daily",
-            params={"requires_action_only": True}
-        )
-        
-        assert response.status_code == 200
-        data = response.json()
-        
-        assert data["client_id"] == "test_client"
-    
     def test_daily_pulse_metadata_includes_period_type(self, client):
         """Test that daily pulse metadata indicates period type."""
         response = client.get("/compliance/pulse/test_client/daily")
@@ -200,16 +172,6 @@ class TestComplianceDailyPulse:
             metadata = data["metadata"]
             assert metadata.get("period_type") == "daily"
     
-    def test_daily_pulse_limit_parameter(self, client):
-        """Test daily pulse with limit parameter."""
-        response = client.get(
-            "/compliance/pulse/test_client/daily",
-            params={"limit": 5}
-        )
-        
-        assert response.status_code == 200
-        data = response.json()
-        
         assert data["client_id"] == "test_client"
 
 

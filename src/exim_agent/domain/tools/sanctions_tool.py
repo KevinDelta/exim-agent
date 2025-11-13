@@ -7,8 +7,8 @@ import httpx
 from loguru import logger
 
 from .base_tool import ComplianceTool
-from src.exim_agent.config import config
-from src.exim_agent.infrastructure.db.supabase_client import supabase_client
+from exim_agent.config import config
+from exim_agent.infrastructure.db.supabase_client import supabase_client
 
 
 class SanctionsTool(ComplianceTool):

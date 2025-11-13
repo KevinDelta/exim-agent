@@ -15,7 +15,7 @@ The Compliance Service is the core component responsible for generating complian
 
 The service uses **LangGraph** to implement a state machine that processes compliance requests through multiple stages:
 
-```
+```yaml
 Input (client_id, sku_id, lane_id, question?)
     ↓
 Execute Tools (parallel)
@@ -36,12 +36,14 @@ Main service class with two primary methods:
 #### `snapshot(client_id: str, sku_id: str, lane_id: str) -> Dict`
 
 Generates a comprehensive compliance snapshot containing:
+
 - **Tiles**: Individual compliance aspects (HTS, sanctions, refusals, rulings)
 - **Overall Risk Level**: Aggregated risk assessment (low/medium/high)
 - **Risk Score**: Numerical risk value (0-100)
 - **Sources**: Evidence and citations supporting the assessment
 
 **Example Response**:
+
 ```python
 {
     "success": True,
@@ -68,11 +70,13 @@ Generates a comprehensive compliance snapshot containing:
 #### `ask(client_id: str, question: str, sku_id: str, lane_id: str) -> Dict`
 
 Answers compliance questions using RAG:
+
 - Executes relevant tools based on question context
 - Retrieves supporting documents from ChromaDB
 - Generates natural language answer with citations
 
 **Example Response**:
+
 ```python
 {
     "success": True,
@@ -84,35 +88,39 @@ Answers compliance questions using RAG:
 
 ### ComplianceGraph (`compliance_graph.py`)
 
-LangGraph state machine with four nodes:
+LangGraph state machine with fail-soft behavior and input validation:
 
-1. **execute_tools_node**: Runs domain tools in parallel using asyncio
-2. **retrieve_context_node**: Fetches relevant documents from ChromaDB collections
-3. **generate_snapshot_node**: Creates structured tiles from tool outputs
-4. **answer_question_node**: Generates natural language answers for Q&A mode
+1. **validate_inputs_node**: Validates required fields (client_id, sku_id, lane_id)
+2. **execute_tools_failsoft**: Runs domain tools sequentially with fail-soft error handling
+3. **retrieve_context_node**: Fetches relevant documents from ChromaDB collections
+4. **generate_snapshot_partial**: Creates structured tiles even with partial tool results
+5. **answer_question_node**: Generates natural language answers with graceful degradation
 
 **State Schema**:
+
 ```python
 class ComplianceState(TypedDict):
-    # Input
+    # Required inputs
     client_id: str
     sku_id: str
     lane_id: str
+    
+    # Optional mode selector
     question: Optional[str]
     
-    # Tool results
-    hts_results: Dict[str, Any]
-    sanctions_results: Dict[str, Any]
-    refusals_results: Dict[str, Any]
-    rulings_results: Dict[str, Any]
+    # Tool results (singular form, consistent {success, data, error} structure)
+    hts_result: Dict[str, Any]
+    sanctions_result: Dict[str, Any]
+    refusals_result: Dict[str, Any]
+    rulings_result: Dict[str, Any]
     
     # RAG context
     rag_context: List[Dict[str, Any]]
     
-    # Output
-    snapshot: Dict[str, Any]
-    citations: List[Evidence]
+    # Outputs
+    snapshot: Optional[Dict[str, Any]]
     answer: Optional[str]
+    citations: List[Evidence]
 ```
 
 ## Usage
@@ -155,23 +163,27 @@ if result["success"]:
 ## Integration Points
 
 ### Domain Tools
+
 - **HTSTool**: Fetches tariff classification and duty rates
 - **SanctionsTool**: Checks consolidated screening lists
 - **RefusalsTool**: Queries FDA/FSIS import refusals
 - **RulingsTool**: Retrieves CBP customs rulings
 
 All tools support:
+
 - Parallel execution for performance
 - Automatic fallback to mock data on API failures
 - Result caching in Supabase
 
 ### ChromaDB Collections
+
 - `compliance_policy_snippets`: General compliance documents
 - `compliance_hts_notes`: HTS-specific information
 - `compliance_rulings`: CBP rulings database
 - `compliance_refusal_summaries`: Import refusal data
 
 ### Supabase Storage
+
 - Tool outputs stored in `compliance_data` table
 - Snapshots can be persisted for historical tracking
 - Supports audit trail and compliance reporting
@@ -195,6 +207,7 @@ The service implements graceful degradation:
 ## Configuration
 
 Environment variables:
+
 ```bash
 # LLM Provider
 OPENAI_API_KEY=sk-...
@@ -212,11 +225,13 @@ CSL_API_KEY=xxx  # ITA Consolidated Screening List
 ## Testing
 
 Run compliance service tests:
+
 ```bash
 pytest tests/test_compliance_service.py -v
 ```
 
 Integration tests with real APIs:
+
 ```bash
 pytest tests/test_compliance_service.py -v --integration
 ```
