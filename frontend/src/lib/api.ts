@@ -22,7 +22,7 @@ interface RequestOptions {
 
 const DEFAULT_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '') || 'http://localhost:8000';
-const DEFAULT_TIMEOUT = Number(process.env.NEXT_PUBLIC_API_TIMEOUT ?? 10000);
+const DEFAULT_TIMEOUT = Number(process.env.NEXT_PUBLIC_API_TIMEOUT ?? 100000);
 const DEBUG_ENABLED = process.env.NEXT_PUBLIC_ENABLE_DEBUG === 'true';
 
 export class ApiClient {
@@ -46,7 +46,7 @@ export class ApiClient {
 
   private logDebug(message: string, payload?: unknown): void {
     if (this.debug) {
-      // eslint-disable-next-line no-console
+      
       console.debug(`[api] ${message}`, payload);
     }
   }
@@ -74,11 +74,8 @@ export class ApiClient {
 
   private async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     const url = this.buildUrl(path);
-    const method = options.method ?? 'GET';
-    const controller = new AbortController();
-    const timeout = options.timeoutMs ?? this.timeoutMs;
-    const timer = timeout ? setTimeout(() => controller.abort(), timeout) : null;
-
+    // Default to POST when a request body is provided unless a method was explicitly set.
+    const method = options.method ?? (options.body !== undefined ? 'POST' : 'GET');
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -87,7 +84,6 @@ export class ApiClient {
     const init: RequestInit = {
       method,
       headers,
-      signal: controller.signal,
     };
 
     if (options.body !== undefined) {
@@ -100,11 +96,23 @@ export class ApiClient {
       const response = await fetch(url, init);
       const text = await response.text();
       let data: T | undefined;
+      let parseError: Error | undefined;
+      
       if (text) {
         try {
           data = JSON.parse(text) as T;
-        } catch {
-          data = undefined;
+        } catch (e) {
+          parseError = e as Error;
+          this.logDebug('JSON parse failed', { text: text.substring(0, 200), error: parseError.message });
+          // If response is OK but JSON parsing failed, this is a problem
+          if (response.ok) {
+            throw new ApiError(
+              ApiErrorType.SERVER_ERROR,
+              `Invalid JSON response from server: ${parseError.message}`,
+              response.status,
+              false
+            );
+          }
         }
       }
 
@@ -120,20 +128,52 @@ export class ApiClient {
         throw new ApiError(type, message, response.status, this.isRetryable(type));
       }
 
-      this.logDebug('Response', { url, status: response.status, data });
+      // If we have a successful response but no data, that's unexpected
+      if (!data && text) {
+        throw new ApiError(
+          ApiErrorType.SERVER_ERROR,
+          'Received empty response body from server',
+          response.status,
+          false
+        );
+      }
+
+      // If response is truly empty (no text), return empty object only if that's acceptable
+      // Otherwise, log a warning
+      if (!data && !text) {
+        this.logDebug('Empty response body', { url, status: response.status });
+      }
+
+      this.logDebug('Response', { 
+        url, 
+        status: response.status, 
+        data,
+        dataType: typeof data,
+        hasData: !!data,
+        keys: data ? Object.keys(data as Record<string, unknown>) : []
+      });
+      
+      // Validate response structure for AskResponse
+      if (path.includes('/compliance/ask') && data) {
+        const askData = data as unknown as AskResponse;
+        this.logDebug('AskResponse validation', {
+          hasSuccess: 'success' in askData,
+          success: askData.success,
+          hasAnswer: 'answer' in askData,
+          answer: askData.answer ? askData.answer.substring(0, 100) : null,
+          hasQuestion: 'question' in askData,
+          question: askData.question ? askData.question.substring(0, 100) : null,
+          hasCitations: 'citations' in askData,
+          citationsCount: Array.isArray(askData.citations) ? askData.citations.length : 0,
+          hasError: 'error' in askData,
+          error: askData.error,
+        });
+      }
+      
       return (data ?? ({} as T)) as T;
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
-      }
-
-      if ((error as Error).name === 'AbortError') {
-        throw new ApiError(
-          ApiErrorType.TIMEOUT_ERROR,
-          'Request timed out',
-          undefined,
-          true,
-        );
       }
 
       throw new ApiError(
@@ -142,10 +182,6 @@ export class ApiClient {
         undefined,
         true,
       );
-    } finally {
-      if (timer) {
-        clearTimeout(timer);
-      }
     }
   }
 
@@ -153,11 +189,11 @@ export class ApiClient {
     fn: () => Promise<T>,
     options: RetryOptions = {},
   ): Promise<T> {
-    const maxRetries = options.maxRetries ?? 2;
+    const maxRetries = options.maxRetries ?? 1;
     let delay = options.initialDelayMs ?? 500;
     let attempt = 0;
 
-    // eslint-disable-next-line no-constant-condition
+    
     while (true) {
       try {
         return await fn();

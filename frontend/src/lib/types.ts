@@ -63,8 +63,9 @@ export interface SnapshotRequest {
 export interface AskRequest {
   client_id: string;
   question: string;
-  sku_id?: string;
-  lane_id?: string;
+  sku_id: string;  // Required by backend
+  lane_id: string;  // Required by backend
+  hts_code?: string;  // Optional, matches backend
 }
 
 export interface AskResponse {

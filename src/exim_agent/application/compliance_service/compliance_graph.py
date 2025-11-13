@@ -113,13 +113,7 @@ def execute_tools_node(state: ComplianceState) -> ComplianceState:
     sku_id = state['sku_id']
     lane_id = state['lane_id']
      
-    log_with_context(
-        "info",
-        "Executing compliance tools",
-        client_id=client_id,
-        sku_id=sku_id,
-        lane_id=lane_id
-    )
+    logger.info(f"Executing compliance tools for client_id={client_id}, sku_id={sku_id}, lane_id={lane_id}")
     
     # Get HTS code from state with fallback
     hts_code = state.get('hts_code') or DEFAULT_HTS_CODE
@@ -127,14 +121,7 @@ def execute_tools_node(state: ComplianceState) -> ComplianceState:
     
     # HTS Tool - fail-soft execution
     try:
-        log_with_context(
-            "debug",
-            f"Executing HTS tool with code: {hts_code}",
-            client_id=client_id,
-            sku_id=sku_id,
-            lane_id=lane_id,
-            hts_code=hts_code
-        )
+        logger.debug(f"Executing HTS tool with code: {hts_code}")
         hts_result = HTSTool().run(hts_code=hts_code, lane_id=state['lane_id'])
         state['hts_result'] = {
             'success': hts_result.success,
@@ -142,30 +129,11 @@ def execute_tools_node(state: ComplianceState) -> ComplianceState:
             'error': hts_result.error
         }
         if hts_result.success:
-            log_with_context(
-                "info",
-                f"HTS tool succeeded: {hts_result.data.get('hts_code', 'N/A')}",
-                client_id=client_id,
-                sku_id=sku_id,
-                lane_id=lane_id
-            )
+            logger.info(f"HTS tool succeeded: {hts_result.data.get('hts_code', 'N/A')}")
         else:
-            log_with_context(
-                "warning",
-                f"HTS tool returned failure: {hts_result.error}",
-                client_id=client_id,
-                sku_id=sku_id,
-                lane_id=lane_id
-            )
+            logger.warning(f"HTS tool returned failure: {hts_result.error}")
     except Exception as e:
-        log_with_context(
-            "error",
-            "HTS tool exception (continuing with remaining tools)",
-            client_id=client_id,
-            sku_id=sku_id,
-            lane_id=lane_id,
-            error=e
-        )
+        logger.error(f"HTS tool exception (continuing with remaining tools): {e}")
         state['hts_result'] = {'success': False, 'data': {}, 'error': str(e)}
     
     # Sanctions Tool - fail-soft execution

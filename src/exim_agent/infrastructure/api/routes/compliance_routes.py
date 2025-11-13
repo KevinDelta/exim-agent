@@ -1,6 +1,6 @@
 """Compliance Pulse API routes."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, status
@@ -113,7 +113,7 @@ async def generate_snapshot(request: SnapshotRequest) -> SnapshotResponse:
         logger.info(f"Snapshot request: {request.client_id}/{request.sku_id}/{request.lane_id}")
         
         # Track processing time
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         
         # Initialize service if needed
         if compliance_service.graph is None:
@@ -128,7 +128,7 @@ async def generate_snapshot(request: SnapshotRequest) -> SnapshotResponse:
         )
         
         # Calculate processing time
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         processing_time_ms = int((end_time - start_time).total_seconds() * 1000)
         
         # Extract alert count from snapshot

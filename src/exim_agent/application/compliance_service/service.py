@@ -226,6 +226,9 @@ class ComplianceService:
         ]
         
         # Add to Mem0 with metadata for filtering
+        # Convert tile_keys list to comma-separated string (ChromaDB doesn't support lists in metadata)
+        tile_keys_str = ",".join(sorted(tiles.keys())) if tiles else ""
+        
         mem0_client.add(
             messages=messages,
             user_id=client_id,
@@ -238,7 +241,7 @@ class ComplianceService:
                 "hts_code": hts_code,
                 "risk_level": risk_level,
                 "alert_count": alert_count,
-                "tile_keys": list(tiles.keys())
+                "tile_keys": tile_keys_str
             }
         )
         
