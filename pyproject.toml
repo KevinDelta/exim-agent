@@ -39,8 +39,11 @@ dependencies = [
   "beautifulsoup4>=4.14.2",
   "supabase>=2.9.1",
   "supabase-auth>=2.24.0",
+  "protobuf>=6.33.1",
+  "langgraph-cli>=0.4.7",
+  "langgraph-api>=0.4.7",
 ]
-requires-python = ">= 3.10"
+requires-python = ">= 3.11"
 
 [dependency-groups]
 dev = [
@@ -80,3 +83,6 @@ packages = ["src/exim_agent"]
 
 [tool.uv]
 package = true
+override-dependencies = [
+    "protobuf>=6.0.0",
+]

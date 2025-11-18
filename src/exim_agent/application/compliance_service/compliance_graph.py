@@ -10,9 +10,10 @@ from exim_agent.infrastructure.db.compliance_collections import compliance_colle
 from exim_agent.domain.compliance.compliance_event import Tile, SnapshotResponse, Evidence
 from exim_agent.domain.compliance.enums import TileStatus, RiskLevel
 
+from exim_agent.infrastructure.llm_providers.langchain_provider import get_llm
+
 # Safe default HTS code when none provided
 DEFAULT_HTS_CODE = "8517.12.00"
-from exim_agent.infrastructure.llm_providers.langchain_provider import get_llm
 
 
 class ComplianceState(TypedDict):

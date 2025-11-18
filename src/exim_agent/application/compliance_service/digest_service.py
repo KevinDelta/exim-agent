@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
 from loguru import logger
@@ -73,7 +73,7 @@ def generate_current_snapshots(
                 current_snapshots[key] = {
                     "snapshot": result.get("snapshot", {}),
                     "citations": result.get("citations", []),
-                    "generated_at": datetime.utcnow().isoformat(),
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
                 }
             else:
                 logger.warning("Snapshot generation failed for %s: %s", key, result)
@@ -100,7 +100,7 @@ def compute_deltas(
                     "change_type": "new_monitoring",
                     "priority": "medium",
                     "description": "Started monitoring this SKU+Lane combination",
-                    "timestamp": current.get("generated_at", datetime.utcnow().isoformat()),
+                    "timestamp": current.get("generated_at", datetime.now(timezone.utc).isoformat()),
                 }
             )
             continue
@@ -129,7 +129,7 @@ def compute_deltas(
                         "high_risk_before": previous_risks["high"],
                         "high_risk_now": current_risks["high"],
                     },
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
             )
 
@@ -182,7 +182,7 @@ def generate_digest(
         "client_id": client_id,
         "period_start": period_start,
         "period_end": period_end,
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "summary": {
             "total_sku_lanes": len(current_snapshots),
             "total_changes": len(changes),
@@ -218,7 +218,7 @@ def generate_digest_for_period(
     persist: bool = False,
 ) -> Dict[str, Any]:
     """Public entry point used by API routes for weekly/daily pulses."""
-    end_date = datetime.utcnow()
+    end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=period_days)
 
     sku_lanes = load_client_sku_lanes(client_id)

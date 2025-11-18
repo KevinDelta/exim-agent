@@ -39,11 +39,11 @@ class SupabaseClient:
     # Generic compliance data helpers used by HTS/sanctions/rulings tools
     # ------------------------------------------------------------------
     def store_compliance_data(
-        self, source_type: str, source_id: str, data: Dict[str, Any]
-    ) -> bool:
+        self, source_type: str, source_id: str, data: Dict[str, Any]) -> bool:
+        
         if not self._client:
             logger.debug("Supabase unavailable; skipping %s data store", source_type)
-            return False
+            return False 
 
         try:
             (
@@ -63,8 +63,8 @@ class SupabaseClient:
             return False
 
     def get_compliance_data(
-        self, source_type: str, source_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, source_type: str, source_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        
         if not self._client:
             return []
 

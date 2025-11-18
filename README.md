@@ -97,6 +97,23 @@ curl -X POST http://localhost:8000/chat \
   -d '{"message": "What is LangChain?"}'
 ```
 
+### 6. Run the LangGraph Dev Server
+
+Use the project virtual environment when launching the LangGraph CLI to avoid protobuf version mismatches:
+
+```bash
+make langgraph-dev
+```
+
+This wraps `langgraph dev` with `.venv` so the bundled `google-protobuf` (v6.x) matches the gRPC stubs shipped with `langgraph-api`. Running a globally installed CLI without the repo environment can trigger:
+
+```
+google.protobuf.runtime_version.VersionError: …
+    gencode 6.31.1 runtime 5.29.5. Same major version is required.
+```
+
+If you still need to use a global install, upgrade protobuf there as well (`python -m pip install --upgrade "protobuf>=6.31.1"`).
+
 ## Project Structure
 
 ```bash

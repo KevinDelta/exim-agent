@@ -12,13 +12,35 @@ from exim_agent.infrastructure.llm_providers.langchain_provider import get_llm
 from exim_agent.application.compliance_service.compliance_graph import compliance_graph
 
 
-class ChatState(TypedDict):
-    """Minimal state schema for chat graph with clear field purposes."""
+class ChatState(TypedDict): 
+    """State schema for chat graph with clear field purposes.
+    
+    Fields:
+        query: The user's input question
+        user_id: The user's ID
+        session_id: The session ID
+        
+        client_id: The client ID
+        sku_id: The SKU ID
+        lane_id: The lane ID
+        
+        relevant_memories: The conversational memories retrieved from Mem0
+        rag_context: The document retrieval context retrieved from ChromaDB
+        final_context: The combined and reranked context
+        
+        response: The assistant's response
+        citations: The source citations
+        snapshot: The compliance snapshot
+        routing_path: The path taken: general_rag, slot_filling, or delegate_compliance
+        
+        _needs_slot_filling: Whether the user needs to provide the missing slots
+        _missing_slots: The missing slots that the user needs to provide
+    """
     # Required inputs
     query: str
     user_id: str
     session_id: str
-    
+        
     # Optional routing metadata (for compliance delegation)
     client_id: str | None
     sku_id: str | None
@@ -110,9 +132,9 @@ def slot_filling_node(state: ChatState) -> ChatState:
     state["citations"] = []
     state["snapshot"] = None
     state["routing_path"] = "slot_filling"
-    
+
     logger.info(f"Slot filling requested for: {missing}")
-    
+
     return state
 
 
@@ -182,23 +204,23 @@ def delegate_to_compliance(state: ChatState) -> ChatState:
     return state
 
 
-def load_memories_safe(state: ChatState) -> ChatState:
+def load_memories(state: ChatState) -> ChatState:
     """
     Load relevant memories from Mem0 with complete fail-soft behavior.
     Memory failures never block response generation.
     """
     logger.info(f"Loading Mem0 memories for session: {state['session_id']}")
-    
+
     if not mem0_client.is_enabled():
         logger.debug("Mem0 disabled, skipping memory load")
         state["relevant_memories"] = []
         return state
-    
+
     try:
         query = state["query"]
         user_id = state["user_id"]
         session_id = state["session_id"]
-        
+
         # Mem0 automatically:
         # - Retrieves recent conversation context
         # - Classifies intent and extracts entities
@@ -229,7 +251,7 @@ def load_memories_safe(state: ChatState) -> ChatState:
     return state
 
 
-def query_documents_safe(state: ChatState) -> ChatState:
+def query_documents(state: ChatState) -> ChatState:
     """
     Query document store for RAG context with complete fail-soft behavior.
     RAG failures never block response generation.
@@ -248,7 +270,7 @@ def query_documents_safe(state: ChatState) -> ChatState:
             query,
             k=config.retrieval_k
         )
-        
+             
         # Normalize to simple dict format for downstream processing
         state["rag_context"] = [
             {
@@ -266,7 +288,7 @@ def query_documents_safe(state: ChatState) -> ChatState:
     return state
 
 
-def rerank_and_fuse_safe(state: ChatState) -> ChatState:
+def rerank_and_fuse(state: ChatState) -> ChatState:
     """
     Combine memories + RAG results and rerank with cross-encoder.
     Falls back to truncation if reranking fails.
@@ -368,12 +390,15 @@ def generate_response(state: ChatState) -> ChatState:
     ])
     
     # Create prompt
-    prompt = f"""Answer the question using the following context. If the context doesn't contain relevant information, say so.
+    prompt = f"""Answer the question using the following context. If the context doesn't contain relevant information, say so. 
+    
+    If the user is asking for a compliance snapshot, delegate to the compliance graph.
+    If the user is asking for a general question, answer the question using the following context.
 
 Context:
 {context_str}
 
-Question: {query}
+Question: {query} 
 
 Answer:"""
     
@@ -402,7 +427,7 @@ Answer:"""
     return state
 
 
-def update_memories_safe(state: ChatState) -> ChatState:
+def update_memories(state: ChatState) -> ChatState:
     """
     Store conversation turn in Mem0 with complete fail-soft behavior.
     Memory failures never block response generation.
@@ -452,7 +477,7 @@ def update_memories_safe(state: ChatState) -> ChatState:
 
 def build_memory_graph() -> StateGraph:
     """
-    Build the simplified LangGraph state machine with conservative routing.
+    Build the LangGraph state machine for the chat service.
     """
     logger.info("Building chat graph with conservative routing")
     
@@ -462,11 +487,11 @@ def build_memory_graph() -> StateGraph:
     workflow.add_node("route", route_node)
     workflow.add_node("slot_filling", slot_filling_node)
     workflow.add_node("delegate_to_compliance", delegate_to_compliance)
-    workflow.add_node("load_memories", load_memories_safe)
-    workflow.add_node("query_documents", query_documents_safe)
-    workflow.add_node("rerank_and_fuse", rerank_and_fuse_safe)
-    workflow.add_node("generate_response", generate_response)
-    workflow.add_node("update_memories", update_memories_safe)
+    workflow.add_node("load_memories", load_memories)
+    workflow.add_node("query_documents", query_documents)
+    workflow.add_node("rerank_and_fuse", rerank_and_fuse)
+    workflow.add_node("generate_response", generate_response) 
+    workflow.add_node("update_memories", update_memories)
     
     # Define edges with conservative routing logic
     def route_after_entry(state: ChatState) -> str:
