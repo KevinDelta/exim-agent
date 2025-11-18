@@ -4,8 +4,8 @@ import os
 import pytest
 from unittest.mock import patch, MagicMock
 
-from src.exim_agent.config import Settings
-from src.exim_agent.infrastructure.db.supabase_client import SupabaseClient
+from exim_agent.config import Settings
+from exim_agent.infrastructure.db.supabase_client import SupabaseClient
 
 
 class TestSupabaseConfiguration:
@@ -36,20 +36,20 @@ class TestSupabaseConfiguration:
     
     def test_supabase_client_initialization_without_config(self):
         """Test that SupabaseClient handles missing configuration gracefully."""
-        with patch('src.exim_agent.infrastructure.db.supabase_client.config') as mock_config:
+        with patch('exim_agent.infrastructure.db.supabase_client.config') as mock_config:
             mock_config.supabase_url = None
             mock_config.supabase_anon_key = None
             
             client = SupabaseClient()
             assert client._client is None
     
-    @patch('src.exim_agent.infrastructure.db.supabase_client.create_client')
+    @patch('exim_agent.infrastructure.db.supabase_client.create_client')
     def test_supabase_client_initialization_with_config(self, mock_create_client):
         """Test that SupabaseClient initializes properly with configuration."""
         mock_client = MagicMock()
         mock_create_client.return_value = mock_client
         
-        with patch('src.exim_agent.infrastructure.db.supabase_client.config') as mock_config:
+        with patch('exim_agent.infrastructure.db.supabase_client.config') as mock_config:
             mock_config.supabase_url = "https://test.supabase.co"
             mock_config.supabase_anon_key = "test-key"
             
@@ -59,7 +59,7 @@ class TestSupabaseConfiguration:
     
     def test_store_compliance_data_without_client(self):
         """Test storing data when client is not available."""
-        with patch('src.exim_agent.infrastructure.db.supabase_client.config') as mock_config:
+        with patch('exim_agent.infrastructure.db.supabase_client.config') as mock_config:
             mock_config.supabase_url = None
             mock_config.supabase_anon_key = None
             
@@ -67,7 +67,7 @@ class TestSupabaseConfiguration:
             result = client.store_compliance_data("hts", "8517.12.00", {"test": "data"})
             assert result is False
     
-    @patch('src.exim_agent.infrastructure.db.supabase_client.create_client')
+    @patch('exim_agent.infrastructure.db.supabase_client.create_client')
     def test_store_compliance_data_success(self, mock_create_client):
         """Test successful data storage."""
         mock_client = MagicMock()
@@ -80,7 +80,7 @@ class TestSupabaseConfiguration:
         mock_upsert.execute.return_value = {"data": [{"id": 1}]}
         mock_create_client.return_value = mock_client
         
-        with patch('src.exim_agent.infrastructure.db.supabase_client.config') as mock_config:
+        with patch('exim_agent.infrastructure.db.supabase_client.config') as mock_config:
             mock_config.supabase_url = "https://test.supabase.co"
             mock_config.supabase_anon_key = "test-key"
             
@@ -96,7 +96,7 @@ class TestSupabaseConfiguration:
     
     def test_health_check_without_client(self):
         """Test health check when client is not available."""
-        with patch('src.exim_agent.infrastructure.db.supabase_client.config') as mock_config:
+        with patch('exim_agent.infrastructure.db.supabase_client.config') as mock_config:
             mock_config.supabase_url = None
             mock_config.supabase_anon_key = None
             

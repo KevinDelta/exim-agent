@@ -86,7 +86,7 @@ class RetryConfig(BaseModel):
     """Configuration for retry logic."""
     
     max_attempts: int = Field(
-        default=2,
+        default=1,
         description="Maximum number of retry attempts",
         ge=1,
         le=10
@@ -130,12 +130,15 @@ class ComplianceTool(ABC):
             retry_config: Retry configuration
             circuit_breaker_config: Circuit breaker configuration
         """
+        from ...config import config
+        
         self.cache_ttl_seconds = cache_ttl_seconds
         self._cache: Dict[str, tuple[datetime, ToolResponse]] = {}
         
-        # HTTP client with reasonable defaults
+        # HTTP client with configurable timeout from environment
+        tool_timeout = getattr(config, 'tool_timeout_seconds', 10.0)
         self.client = httpx.Client(
-            timeout=30.0,
+            timeout=tool_timeout,
             limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),
             headers={"User-Agent": "ComplianceIntelligencePlatform/1.0"}
         )
@@ -209,7 +212,7 @@ class ComplianceTool(ABC):
             except Exception as e:
                 last_exception = e
                 
-                # Log error for monitoring (requirement 7.1)
+                # Log error for monitoring
                 logger.error(
                     f"{self.__class__.__name__} attempt {attempt + 1}/{self.retry_config.max_attempts} failed: {e}",
                     extra={

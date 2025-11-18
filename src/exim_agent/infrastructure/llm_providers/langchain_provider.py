@@ -23,7 +23,11 @@ def get_llm() -> BaseChatModel:
         BaseChatModel: The initialized LLM instance
     """
     global _llm
-    if _llm is None:
+    if _llm is None or not hasattr(_llm, "invoke"):
+        if _llm is not None and not hasattr(_llm, "invoke"):
+            logger.warning(
+                "Cached LLM instance missing 'invoke'; reinitializing provider to ensure ChatOpenAI is used."
+            )
         _llm = _initialize_llm()
     return _llm
 
@@ -56,24 +60,32 @@ def reset_embeddings():
 
 
 def _initialize_llm() -> BaseChatModel:
-    """Initialize LLM based on configured provider."""
+    """
+    Initialize LLM based on configured provider.
+    
+    For MVP, defaults to OpenAI.
+    """
     provider = config.llm_provider.lower()
+    
+    # MVP: Normalize to OpenAI
+    if provider != "openai":
+        logger.warning(
+            f"Non-OpenAI provider '{provider}' requested. "
+            f"For MVP, defaulting to OpenAI. Multi-provider support is post-MVP."
+        )
+        provider = "openai"
+    
     logger.info(f"Initializing LLM with provider: {provider}")
     
     try:
         if provider == "openai":
             from .openai_provider import OpenAIProvider
             return OpenAIProvider().initialize_llm()
-        elif provider == "anthropic":
-            from .anthropic_provider import AnthropicProvider
-            return AnthropicProvider().initialize_llm()
-        elif provider == "groq":
-            from .groq_provider import GroqProvider
-            return GroqProvider().initialize_llm()
         else:
+            # This should not be reached due to normalization above
             raise ValueError(
                 f"Unsupported LLM provider: {provider}. "
-                f"Supported providers: openai, anthropic, groq"
+                f"MVP only supports OpenAI."
             )
     except ImportError as e:
         logger.error(f"Failed to import provider {provider}: {e}")

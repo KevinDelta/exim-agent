@@ -20,7 +20,7 @@ const LazyLoadedChatWindow = React.lazy(() => import('./ChatWindow').then(module
  * - Smooth expand/collapse animations
  * - Z-index management to stay above content
  */
-export const PersistentChat: React.FC = React.memo(() => {
+const PersistentChatComponent: React.FC = () => {
   const {
     messages,
     isExpanded,
@@ -396,4 +396,8 @@ export const PersistentChat: React.FC = React.memo(() => {
       />
     </>
   );
-});
+};
+
+PersistentChatComponent.displayName = 'PersistentChat';
+
+export const PersistentChat = React.memo(PersistentChatComponent);

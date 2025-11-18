@@ -3,7 +3,7 @@
 import pytest
 import asyncio
 import httpx
-from src.exim_agent.infrastructure.http_client import (
+from exim_agent.infrastructure.http_client import (
     HTTPClientManager,
     get_sync_client,
     get_async_client,
@@ -107,8 +107,8 @@ async def test_shutdown_http_clients():
 
 async def test_multiple_tools_share_client():
     """Test that multiple tool instances share the same HTTP client."""
-    from src.exim_agent.domain.tools.hts_tool import HTSTool
-    from src.exim_agent.domain.tools.sanctions_tool import SanctionsTool
+    from exim_agent.domain.tools.hts_tool import HTSTool
+    from exim_agent.domain.tools.sanctions_tool import SanctionsTool
     
     tool1 = HTSTool()
     tool2 = SanctionsTool()

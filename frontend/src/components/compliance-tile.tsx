@@ -44,11 +44,19 @@ const statusBadgeVariants = {
   error: "destructive" as const,
 };
 
+const statusBadgeClasses = {
+  clear: "bg-green-100 text-green-900 border-green-200 dark:bg-green-900 dark:text-green-100 dark:border-green-800",
+  attention: "bg-yellow-100 text-yellow-900 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-100 dark:border-yellow-800",
+  action: "bg-orange-100 text-orange-900 border-orange-200 dark:bg-orange-900 dark:text-orange-100 dark:border-orange-800",
+  error: "bg-red-100 text-red-900 border-red-200 dark:bg-red-900 dark:text-red-100 dark:border-red-800",
+};
+
 export function ComplianceTile({ tile, title, className }: ComplianceTileProps) {
   const StatusIcon = statusIcons[tile.status];
   const statusColorClass = statusColors[tile.status];
   const statusTextClass = statusTextColors[tile.status];
   const badgeVariant = statusBadgeVariants[tile.status];
+  const badgeClassName = statusBadgeClasses[tile.status];
 
   // Format the last updated date
   const formatDate = (dateString: string) => {
@@ -81,10 +89,13 @@ export function ComplianceTile({ tile, title, className }: ComplianceTileProps) 
     }
   };
 
+  const lastUpdated = tile.last_updated ?? '';
+  const formattedLastUpdated = formatDate(lastUpdated);
+
   const tileId = `tile-${title.replace(/\s+/g, '-').toLowerCase()}`;
   const statusId = `${tileId}-status`;
   const descriptionId = `${tileId}-description`;
-
+//TODO: Add a tooltip to the status icon
   return (
     <Card 
       className={cn(
@@ -116,7 +127,7 @@ export function ComplianceTile({ tile, title, className }: ComplianceTileProps) 
           <Badge 
             id={statusId}
             variant={badgeVariant}
-            className="text-responsive-xs self-start"
+            className={cn("text-responsive-xs self-start", badgeClassName)}
             role="status"
             aria-label={`Current status: ${getStatusText(tile.status)}`}
           >
@@ -124,11 +135,11 @@ export function ComplianceTile({ tile, title, className }: ComplianceTileProps) 
           </Badge>
           <time 
             className="text-responsive-xs text-muted-foreground"
-            dateTime={tile.last_updated}
-            title={`Last updated: ${tile.last_updated}`}
-            aria-label={`Last updated: ${formatDate(tile.last_updated)}`}
+            dateTime={lastUpdated}
+            title={lastUpdated ? `Last updated: ${lastUpdated}` : 'Last updated: Unknown'}
+            aria-label={`Last updated: ${formattedLastUpdated}`}
           >
-            {formatDate(tile.last_updated)}
+            {formattedLastUpdated}
           </time>
         </div>
       </CardHeader>

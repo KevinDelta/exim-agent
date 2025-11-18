@@ -29,8 +29,8 @@ class Settings(BaseSettings):
     langsmith_endpoint: str | None = None  
     langsmith_project: str | None = None  
       
-    # Provider Selection
-    llm_provider: str = "openai"  # Options: openai, anthropic, groq
+    # Provider Selection (MVP: OpenAI only, multi-provider support is post-MVP)
+    llm_provider: str = "openai"  # MVP default: openai (anthropic, groq support post-MVP)
     embedding_provider: str = "openai"  # Currently only openai supported
     
     # OpenAI Configuration
@@ -53,14 +53,20 @@ class Settings(BaseSettings):
     chunk_overlap: int = 200
     ingestion_batch_size: int = int(os.getenv("INGESTION_BATCH_SIZE", 1000))
     
-    # RAG Configuration
-    retrieval_k: int = 20  # Number of documents to retrieve (increased for reranking)
+    # RAG Configuration (MVP-optimized)
+    retrieval_k: int = 10  # Number of documents to retrieve (reduced from 20 for faster retrieval)
     retrieval_score_threshold: float = 0.7  # Minimum similarity score
     
     # Reranking Configuration
     enable_reranking: bool = True
     rerank_top_k: int = 5  # Number of documents after reranking
     cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    
+    # Timeout Configuration (MVP: explicit timeouts for all external calls)
+    llm_timeout_seconds: float = 30.0  # Timeout for LLM API calls
+    tool_timeout_seconds: float = 10.0  # Timeout for compliance tool API calls
+    chroma_timeout_seconds: float = 5.0  # Timeout for ChromaDB operations
+    # chroma_client_timeout_seconds: float = 30.0  # Timeout for ChromaDB client operations
     
     # Evaluation Configuration
     enable_evaluation: bool = True  # Auto-evaluate responses

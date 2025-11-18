@@ -1,10 +1,4 @@
-"""Domain layer components for the compliance intelligence platform."""
+"""Domain layer components (models, tools, enums)."""
 
-from .crawlers import BaseCrawler, ComplianceContentType, CrawlMetadata, CrawlResult
+__all__: list[str] = []
 
-__all__ = [
-    "BaseCrawler",
-    "ComplianceContentType", 
-    "CrawlMetadata",
-    "CrawlResult",
-]
