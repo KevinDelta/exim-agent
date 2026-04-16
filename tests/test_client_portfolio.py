@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
-from src.exim_agent.infrastructure.db.supabase_client import SupabaseClient
+from exim_agent.infrastructure.db.supabase_client import SupabaseClient
 
 
 class TestClientPortfolio:
@@ -11,7 +11,7 @@ class TestClientPortfolio:
     
     def test_get_client_portfolio_without_client(self):
         """Test portfolio retrieval when Supabase client is not available."""
-        with patch('src.exim_agent.infrastructure.db.supabase_client.config') as mock_config:
+        with patch('exim_agent.infrastructure.db.supabase_client.config') as mock_config:
             mock_config.supabase_url = None
             mock_config.supabase_anon_key = None
             
@@ -19,7 +19,7 @@ class TestClientPortfolio:
             result = client.get_client_portfolio("test-client-001")
             assert result == []
     
-    @patch('src.exim_agent.infrastructure.db.supabase_client.create_client')
+    @patch('exim_agent.infrastructure.db.supabase_client.create_client')
     def test_get_client_portfolio_success(self, mock_create_client):
         """Test successful portfolio retrieval."""
         mock_client = MagicMock()
@@ -42,7 +42,7 @@ class TestClientPortfolio:
         ])
         mock_create_client.return_value = mock_client
         
-        with patch('src.exim_agent.infrastructure.db.supabase_client.config') as mock_config:
+        with patch('exim_agent.infrastructure.db.supabase_client.config') as mock_config:
             mock_config.supabase_url = "https://test.supabase.co"
             mock_config.supabase_anon_key = "test-key"
             
@@ -58,7 +58,7 @@ class TestClientPortfolio:
             mock_client.table.assert_called_once_with("client_portfolios")
             mock_table.select.assert_called_once_with("sku_id, lane_id, hts_code")
     
-    @patch('src.exim_agent.infrastructure.db.supabase_client.create_client')
+    @patch('exim_agent.infrastructure.db.supabase_client.create_client')
     def test_get_client_portfolio_empty(self, mock_create_client):
         """Test portfolio retrieval when no data exists."""
         mock_client = MagicMock()
@@ -78,7 +78,7 @@ class TestClientPortfolio:
         mock_order.execute.return_value = MagicMock(data=[])
         mock_create_client.return_value = mock_client
         
-        with patch('src.exim_agent.infrastructure.db.supabase_client.config') as mock_config:
+        with patch('exim_agent.infrastructure.db.supabase_client.config') as mock_config:
             mock_config.supabase_url = "https://test.supabase.co"
             mock_config.supabase_anon_key = "test-key"
             
@@ -87,7 +87,7 @@ class TestClientPortfolio:
             
             assert result == []
     
-    @patch('src.exim_agent.infrastructure.db.supabase_client.create_client')
+    @patch('exim_agent.infrastructure.db.supabase_client.create_client')
     def test_get_client_portfolio_error_handling(self, mock_create_client):
         """Test portfolio retrieval error handling."""
         mock_client = MagicMock()
@@ -98,7 +98,7 @@ class TestClientPortfolio:
         mock_table.select.side_effect = Exception("Database connection error")
         mock_create_client.return_value = mock_client
         
-        with patch('src.exim_agent.infrastructure.db.supabase_client.config') as mock_config:
+        with patch('exim_agent.infrastructure.db.supabase_client.config') as mock_config:
             mock_config.supabase_url = "https://test.supabase.co"
             mock_config.supabase_anon_key = "test-key"
             
@@ -108,7 +108,7 @@ class TestClientPortfolio:
             # Should return empty list on error
             assert result == []
     
-    @patch('src.exim_agent.infrastructure.db.supabase_client.create_client')
+    @patch('exim_agent.infrastructure.db.supabase_client.create_client')
     def test_get_client_portfolio_active_only_false(self, mock_create_client):
         """Test portfolio retrieval including inactive SKU+Lanes."""
         mock_client = MagicMock()
@@ -129,7 +129,7 @@ class TestClientPortfolio:
         ])
         mock_create_client.return_value = mock_client
         
-        with patch('src.exim_agent.infrastructure.db.supabase_client.config') as mock_config:
+        with patch('exim_agent.infrastructure.db.supabase_client.config') as mock_config:
             mock_config.supabase_url = "https://test.supabase.co"
             mock_config.supabase_anon_key = "test-key"
             

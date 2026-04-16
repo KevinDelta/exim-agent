@@ -50,7 +50,6 @@ uv run python scripts/run_migrations.py
 |------|-------------|--------|------|
 | `001_create_weekly_pulse_digests.sql` | Creates weekly_pulse_digests table for compliance pulse storage | **Required** | 2025-11-01 |
 | `002_create_memory_analytics_table.sql` | Creates memory_analytics table for Mem0 usage tracking | **Optional** | 2025-11-01 |
-| `003_add_crawling_support.sql` | Adds crawling metadata and audit log tables | **Optional** | 2025-11-01 |
 | `004_create_client_portfolios.sql` | Creates client_portfolios table for SKU+Lane configurations | **Required** | 2025-11-07 |
 
 ## Table Structure
@@ -197,8 +196,8 @@ After running migrations:
    uv run python -c "from exim_agent.infrastructure.db.supabase_client import supabase_client; print(supabase_client.health_check())"
    ```
 
-3. Run the weekly pulse pipeline:
+3. Generate a weekly pulse digest (optional persistence):
 
    ```bash
-   uv run python -c "from exim_agent.application.zenml_pipelines.weekly_pulse import weekly_pulse_pipeline; weekly_pulse_pipeline(client_id='test_client')"
+   uv run python -c "from exim_agent.application.compliance_service.digest_service import generate_digest_for_period; print(generate_digest_for_period('test_client'))"
    ```

@@ -3,9 +3,14 @@ import {
   ComplianceSnapshot, 
   SnapshotRequest,
   ChatRequest,
+  AskRequest,
   ApiError 
 } from '@/lib/types';
-import { getComplianceSnapshotWithRetry, sendChatMessageWithRetry } from '@/lib/api';
+import { 
+  getComplianceSnapshotWithRetry, 
+  sendChatMessageWithRetry,
+  askComplianceQuestionWithRetry 
+} from '@/lib/api';
 
 interface ChatMessage {
   id: string;
@@ -141,47 +146,86 @@ export function useComplianceWorkflow(): UseComplianceWorkflowReturn {
     setChatMessages(prev => [...prev, userMessage]);
 
     try {
-      // Prepare enhanced message with compliance context
-      let enhancedMessage = message;
-      
-      if (context?.hasComplianceData && context.snapshotSummary) {
-        const contextInfo = [
-          `Current compliance context:`,
-          context.htsCode ? `- HTS Code: ${context.htsCode}` : '',
-          context.laneId ? `- Trade Lane: ${context.laneId}` : '',
-          context.snapshotSummary.riskLevel ? `- Risk Level: ${context.snapshotSummary.riskLevel}` : '',
-          context.snapshotSummary.alertCount !== undefined ? `- Active Alerts: ${context.snapshotSummary.alertCount}` : '',
-          context.snapshotSummary.tiles ? `- Analysis Areas: ${context.snapshotSummary.tiles.join(', ')}` : '',
-          '',
-          `User question: ${message}`
-        ].filter(Boolean).join('\n');
-        
-        enhancedMessage = contextInfo;
-      }
-
-      const chatRequest: ChatRequest = {
-        message: enhancedMessage
-        // Note: Mem0 handles conversation history automatically
-      };
-
-      const response = await sendChatMessageWithRetry(chatRequest);
-
-      if (response.success && response.response) {
-        const assistantMessage: ChatMessage = {
-          id: `assistant-${messageIdCounter.current++}`,
-          role: 'assistant',
-          content: response.response,
-          timestamp: new Date(),
-          context: context ? {
-            htsCode: context.htsCode,
-            laneId: context.laneId,
-            complianceData: context.hasComplianceData
-          } : undefined
+      // Use compliance ask endpoint when compliance context is available
+      if (context?.hasComplianceData && lastQueryParams) {
+        const askRequest: AskRequest = {
+          client_id: lastQueryParams.client_id,
+          question: message,
+          sku_id: lastQueryParams.sku_id,
+          lane_id: lastQueryParams.lane_id
         };
 
-        setChatMessages(prev => [...prev, assistantMessage]);
+        const response = await askComplianceQuestionWithRetry(askRequest);
+
+        // Debug logging
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('[useComplianceWorkflow] Compliance ask response:', {
+            success: response.success,
+            hasAnswer: !!response.answer,
+            error: response.error,
+            citationsCount: response.citations?.length || 0
+          });
+        }
+
+        // Handle response - AskResponse uses 'answer' instead of 'response'
+        if (response.success && response.answer) {
+          const assistantMessage: ChatMessage = {
+            id: `assistant-${messageIdCounter.current++}`,
+            role: 'assistant',
+            content: response.answer,
+            timestamp: new Date(),
+            context: {
+              htsCode: context.htsCode,
+              laneId: context.laneId,
+              complianceData: true
+            }
+          };
+
+          setChatMessages(prev => [...prev, assistantMessage]);
+        } else {
+          const errorMsg = response.error || 'Failed to get answer from compliance service';
+          throw new Error(errorMsg);
+        }
       } else {
-        throw new Error(response.error || 'Failed to get response from chat service');
+        // Fallback to generic chat endpoint when no compliance context
+        const chatRequest: ChatRequest = {
+          message: message
+          // Note: Mem0 handles conversation history automatically
+        };
+
+        const response = await sendChatMessageWithRetry(chatRequest);
+
+        // Debug logging to help identify root cause
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('[useComplianceWorkflow] Chat response:', {
+            success: response.success,
+            hasResponse: !!response.response,
+            error: response.error,
+            responsePreview: response.response?.substring(0, 100)
+          });
+        }
+
+        // Handle response - check for both success flag and actual response content
+        if (response.success && response.response) {
+          const assistantMessage: ChatMessage = {
+            id: `assistant-${messageIdCounter.current++}`,
+            role: 'assistant',
+            content: response.response,
+            timestamp: new Date(),
+            context: context ? {
+              htsCode: context.htsCode,
+              laneId: context.laneId,
+              complianceData: context.hasComplianceData
+            } : undefined
+          };
+
+          setChatMessages(prev => [...prev, assistantMessage]);
+        } else {
+          // Backend returned success: false or missing response
+          // Use error message if available, otherwise use response content if it exists
+          const errorMsg = response.error || response.response || 'Failed to get response from chat service';
+          throw new Error(errorMsg);
+        }
       }
     } catch (err) {
       const errorMessage = err instanceof ApiError 
@@ -201,7 +245,7 @@ export function useComplianceWorkflow(): UseComplianceWorkflowReturn {
     } finally {
       setChatLoading(false);
     }
-  }, []);
+  }, [lastQueryParams]);
 
   // Clear chat history
   const clearChatHistory = useCallback(() => {

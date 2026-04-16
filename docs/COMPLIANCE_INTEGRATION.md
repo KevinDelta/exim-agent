@@ -114,12 +114,18 @@ def snapshot(self, client_id: str, sku_id: str, lane_id: str):
     })
 
 # 3. Compliance Graph (LangGraph State Machine)
-def execute_tools_node(state: ComplianceState):
-    # Execute domain tools in parallel
+def validate_inputs_node(state: ComplianceState):
+    # Validate required fields before processing
+    if not all([state.get("client_id"), state.get("sku_id"), state.get("lane_id")]):
+        return error_state
+
+def execute_tools_failsoft(state: ComplianceState):
+    # Execute domain tools sequentially with fail-soft error handling
     hts_result = HTSTool().run(hts_code="8517.12.00", lane_id="CN-US")
     sanctions_result = SanctionsTool().run(party_name="supplier", lane_id="CN-US")
     refusals_result = RefusalsTool().run(hts_code="8517.12.00", lane_id="CN-US")
     rulings_result = RulingsTool().run(hts_code="8517.12.00", lane_id="CN-US")
+    # Each tool wrapped in try-except, continues on failure
 
 def retrieve_context_node(state: ComplianceState):
     # Query ChromaDB for relevant compliance documents
@@ -129,13 +135,13 @@ def retrieve_context_node(state: ComplianceState):
         limit=2
     )
 
-def generate_snapshot_node(state: ComplianceState):
-    # Create compliance tiles from tool results
+def generate_snapshot_partial(state: ComplianceState):
+    # Create compliance tiles even with partial tool results
     tiles = {
-        "hts_classification": create_hts_tile(hts_result),
-        "sanctions_screening": create_sanctions_tile(sanctions_result),
-        "refusal_history": create_refusals_tile(refusals_result),
-        "cbp_rulings": create_rulings_tile(rulings_result)
+        "hts_classification": create_hts_tile(hts_result),  # or error tile
+        "sanctions_screening": create_sanctions_tile(sanctions_result),  # or error tile
+        "refusal_history": create_refusals_tile(refusals_result),  # or error tile
+        "cbp_rulings": create_rulings_tile(rulings_result)  # or error tile
     }
 ```
 

@@ -23,7 +23,7 @@ const mockUserProfile: UserProfile = {
 
 export const useUserStore = create<UserState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       profile: mockUserProfile, // In production, this would be null initially
       isAuthenticated: true, // In production, this would be false initially
       preferences: defaultPreferences,

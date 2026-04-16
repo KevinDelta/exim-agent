@@ -43,8 +43,8 @@ def test_snapshot_has_all_tiles():
     assert result["success"] is True
     tiles = result["snapshot"]["tiles"]
     
-    # Check for expected tiles
-    expected_tiles = ["hts", "sanctions", "health_safety", "rulings"]
+    # Check for expected tiles (normalized keys)
+    expected_tiles = ["hts_classification", "sanctions_screening", "refusal_history", "cbp_rulings"]
     for tile_name in expected_tiles:
         assert tile_name in tiles, f"Missing tile: {tile_name}"
         tile = tiles[tile_name]

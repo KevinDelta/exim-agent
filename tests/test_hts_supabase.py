@@ -2,7 +2,7 @@
 
 import pytest
 from unittest.mock import patch, MagicMock
-from src.exim_agent.domain.tools.hts_tool import HTSTool
+from exim_agent.domain.tools.hts_tool import HTSTool
 
 
 class TestHTSToolSupabase:
@@ -14,7 +14,7 @@ class TestHTSToolSupabase:
         assert tool.name == "search_hts"
         assert "HTS codes" in tool.description
     
-    @patch('src.exim_agent.domain.tools.hts_tool.supabase_client')
+    @patch('exim_agent.domain.tools.hts_tool.supabase_client')
     def test_store_hts_data(self, mock_supabase):
         """Test storing HTS data in Supabase."""
         mock_supabase.store_compliance_data.return_value = True
@@ -48,7 +48,7 @@ class TestHTSToolSupabase:
         assert tool._validate_hts_code("12345") is False  # Invalid length
         assert tool._validate_hts_code("8517.12.ab") is False  # Non-numeric
     
-    @patch('src.exim_agent.domain.tools.hts_tool.supabase_client')
+    @patch('exim_agent.domain.tools.hts_tool.supabase_client')
     @patch('httpx.Client.get')
     def test_run_impl_success(self, mock_get, mock_supabase):
         """Test successful HTS data fetching and storage."""
@@ -95,7 +95,7 @@ class TestHTSToolSupabase:
         assert result["status"] == "fallback"
         assert result["error"] == "Test error"
     
-    @patch('src.exim_agent.domain.tools.hts_tool.supabase_client')
+    @patch('exim_agent.domain.tools.hts_tool.supabase_client')
     @patch('httpx.Client.get')
     def test_run_impl_with_retry(self, mock_get, mock_supabase):
         """Test retry logic on API failures."""
@@ -121,7 +121,7 @@ class TestHTSToolSupabase:
         assert result["hts_code"] == "8517.12.00"
         assert mock_get.call_count == 3
     
-    @patch('src.exim_agent.domain.tools.hts_tool.supabase_client')
+    @patch('exim_agent.domain.tools.hts_tool.supabase_client')
     @patch('httpx.Client.get')
     def test_run_impl_all_retries_fail(self, mock_get, mock_supabase):
         """Test behavior when all retry attempts fail."""

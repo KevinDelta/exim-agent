@@ -61,7 +61,7 @@ class ComplianceTool:
 
 ### Tool Lifecycle
 
-```
+```yaml
 Input Parameters
     ↓
 Check Supabase Cache (24h TTL)
@@ -82,11 +82,13 @@ API Failure → Log Error → Return Fallback Data
 **Purpose**: Fetch Harmonized Tariff Schedule classification and duty rates
 
 **API**: USITC HTS Database
+
 - Endpoint: `https://hts.usitc.gov/api/`
 - Authentication: Public API (no key required)
 - Rate Limit: 100 requests/minute
 
 **Input Parameters**:
+
 ```python
 {
     "hts_code": "8471.30.01",  # 10-digit HTS code
@@ -95,7 +97,8 @@ API Failure → Log Error → Return Fallback Data
 ```
 
 **Output**:
-```python
+
+```json
 {
     "success": True,
     "hts_code": "8471.30.01",
@@ -114,6 +117,7 @@ API Failure → Log Error → Return Fallback Data
 **Fallback Data**: Common HTS codes with typical duty rates
 
 **Use Cases**:
+
 - Tariff classification verification
 - Duty rate calculation
 - Trade agreement eligibility
@@ -123,11 +127,13 @@ API Failure → Log Error → Return Fallback Data
 **Purpose**: Screen parties against consolidated sanctions lists
 
 **API**: ITA Consolidated Screening List (CSL)
+
 - Endpoint: `https://api.trade.gov/consolidated_screening_list/search`
 - Authentication: API key required (`CSL_API_KEY`)
 - Rate Limit: 1000 requests/hour
 
 **Input Parameters**:
+
 ```python
 {
     "party_name": "Acme Trading Co",  # Company or individual name
@@ -137,7 +143,8 @@ API Failure → Log Error → Return Fallback Data
 ```
 
 **Output**:
-```python
+
+```json
 {
     "success": True,
     "matches_found": True,
@@ -161,6 +168,7 @@ API Failure → Log Error → Return Fallback Data
 **Fallback Data**: Empty sanctions list (no matches)
 
 **Use Cases**:
+
 - Pre-transaction screening
 - Supplier due diligence
 - Export control compliance
@@ -170,11 +178,13 @@ API Failure → Log Error → Return Fallback Data
 **Purpose**: Query FDA/FSIS import refusal databases
 
 **APIs**:
+
 - FDA Import Refusals: `https://www.accessdata.fda.gov/scripts/importrefusals/`
 - FSIS Import Refusals: `https://www.fsis.usda.gov/inspection/import-export/`
 
 **Input Parameters**:
-```python
+
+```json
 {
     "hts_code": "0201.10.00",      # HTS code for product
     "product_description": "Beef",  # Product description (optional)
@@ -184,7 +194,8 @@ API Failure → Log Error → Return Fallback Data
 ```
 
 **Output**:
-```python
+
+```json
 {
     "success": True,
     "total_refusals": 45,
@@ -212,6 +223,7 @@ API Failure → Log Error → Return Fallback Data
 **Fallback Data**: Empty refusal list (no recent refusals)
 
 **Use Cases**:
+
 - Food safety risk assessment
 - Supplier quality monitoring
 - Import planning
@@ -221,12 +233,14 @@ API Failure → Log Error → Return Fallback Data
 **Purpose**: Retrieve CBP customs rulings and interpretations
 
 **API**: CBP CROSS (Customs Rulings Online Search System)
+
 - Endpoint: `https://rulings.cbp.gov/api/`
 - Authentication: Public API (no key required)
 - Rate Limit: 50 requests/minute
 
 **Input Parameters**:
-```python
+
+```json
 {
     "hts_code": "8471.30.01",      # HTS code
     "keywords": "laptop computer",  # Search keywords (optional)
@@ -236,7 +250,8 @@ API Failure → Log Error → Return Fallback Data
 ```
 
 **Output**:
-```python
+
+```json
 {
     "success": True,
     "total_rulings": 12,
@@ -262,6 +277,7 @@ API Failure → Log Error → Return Fallback Data
 **Fallback Data**: Generic rulings for common HTS codes
 
 **Use Cases**:
+
 - Classification guidance
 - Valuation disputes
 - Country of origin determinations
@@ -271,6 +287,14 @@ API Failure → Log Error → Return Fallback Data
 ### Parallel Execution
 
 Tools are designed for parallel execution in the Compliance Graph:
+
+```json
+{
+  "tools": ["hts_tool", "sanctions_tool", "refusals_tool", "rulings_tool"],
+  "execution_mode": "parallel",
+  "concurrency_limit": 4
+}
+```
 
 ```python
 import asyncio

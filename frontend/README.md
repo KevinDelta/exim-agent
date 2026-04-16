@@ -49,7 +49,7 @@ frontend/
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20.9+ (use `nvm use` to match `.nvmrc`)
 - npm or yarn
 - The backend API running on `http://localhost:8000`
 

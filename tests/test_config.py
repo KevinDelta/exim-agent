@@ -4,7 +4,7 @@ import os
 import pytest
 from unittest.mock import patch
 
-from src.exim_agent.config import Settings
+from exim_agent.config import Settings
 
 
 class TestConfigurationLoading:

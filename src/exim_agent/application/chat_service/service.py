@@ -56,7 +56,10 @@ class ChatService:
         self,
         message: str,
         user_id: str = "default",
-        session_id: str | None = None
+        session_id: str | None = None,
+        client_id: str | None = None,
+        sku_id: str | None = None,
+        lane_id: str | None = None
     ) -> dict:
         """
         Process a chat message via LangGraph.
@@ -65,6 +68,9 @@ class ChatService:
             message: The user's message
             user_id: User identifier for memory
             session_id: Session identifier for memory
+            client_id: Optional client identifier for compliance routing
+            sku_id: Optional SKU identifier for compliance routing
+            lane_id: Optional lane identifier for compliance routing
             
         Returns:
             Dictionary containing the response and metadata
@@ -76,11 +82,14 @@ class ChatService:
             if not session_id:
                 session_id = f"session-{user_id}"
             
-            # Invoke LangGraph
+            # Invoke LangGraph with optional identifiers
             result = self.graph.invoke({
                 "query": message,
                 "user_id": user_id,
-                "session_id": session_id
+                "session_id": session_id,
+                "client_id": client_id,
+                "sku_id": sku_id,
+                "lane_id": lane_id
             })
             
             logger.info("Chat response generated successfully")
@@ -88,6 +97,8 @@ class ChatService:
             return {
                 "response": result["response"],
                 "citations": result.get("citations", []),
+                "snapshot": result.get("snapshot"),
+                "routing_path": result.get("routing_path"),
                 "success": True
             }
             
